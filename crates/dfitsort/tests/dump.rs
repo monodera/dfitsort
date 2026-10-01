@@ -86,23 +86,36 @@ fn bad_files_are_reported_and_skipped() {
     }
 }
 
+/// Runs `dump` on `names` (copies of a fixture) and checks the echoed `====> file` lines.
 #[cfg(unix)]
-#[test]
-fn paths_with_spaces_and_non_utf8_bytes() {
+fn dump_copies(names: &[&[u8]]) {
     use std::ffi::OsStr;
     use std::os::unix::ffi::OsStrExt;
     let dir = tempfile::tempdir().unwrap();
-    let spaced = dir.path().join("with space.fits");
-    let latin1 = dir.path().join(OsStr::from_bytes(b"caf\xe9.fits"));
-    std::fs::copy(fixtures().join("eso1.fits"), &spaced).unwrap();
-    std::fs::copy(fixtures().join("eso1.fits"), &latin1).unwrap();
-    let out = dfitsort().arg("dump").arg(&spaced).arg(&latin1).output().unwrap();
+    let paths: Vec<_> = names.iter().map(|n| dir.path().join(OsStr::from_bytes(n))).collect();
+    for path in &paths {
+        std::fs::copy(fixtures().join("eso1.fits"), path).unwrap();
+    }
+    let out = dfitsort().arg("dump").args(&paths).output().unwrap();
     assert!(out.status.success());
-    for path in [&spaced, &latin1] {
+    for path in &paths {
         let mut line = b"====> file ".to_vec();
         line.extend_from_slice(path.as_os_str().as_bytes());
         assert!(out.stdout.windows(line.len()).any(|w| w == line.as_slice()));
     }
+}
+
+#[cfg(unix)]
+#[test]
+fn paths_with_spaces() {
+    dump_copies(&[b"with space.fits"]);
+}
+
+/// Only Linux accepts arbitrary bytes in file names (APFS rejects non-UTF-8 names).
+#[cfg(target_os = "linux")]
+#[test]
+fn paths_with_non_utf8_bytes() {
+    dump_copies(&[b"with space.fits", b"caf\xe9.fits"]);
 }
 
 #[test]

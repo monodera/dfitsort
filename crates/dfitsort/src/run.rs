@@ -13,9 +13,9 @@ pub const LARGE_RESULTS: usize = 1024;
 pub const TEXT_CAPACITY: usize = 32 * 1024;
 
 pub fn init_threads(jobs: Option<usize>) {
-    if let Some(n) = jobs {
+    if let Some(n) = jobs.filter(|&n| n > 0) {
         // Fails only if the pool was already built, which is harmless.
-        let _ = rayon::ThreadPoolBuilder::new().num_threads(n.max(1)).build_global();
+        let _ = rayon::ThreadPoolBuilder::new().num_threads(n).build_global();
     }
 }
 

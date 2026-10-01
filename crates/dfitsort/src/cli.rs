@@ -35,7 +35,7 @@ pub struct DumpArgs {
     /// Show tile-compressed HDUs as stored instead of the image header
     #[arg(long)]
     pub compressed: bool,
-    /// Number of worker threads [default: all cores]
+    /// Number of worker threads (0 = all cores) [default: all cores]
     #[arg(short = 'j', long = "jobs", value_name = "N")]
     pub jobs: Option<usize>,
     /// FITS files; `-` reads one FITS stream from stdin
@@ -75,7 +75,7 @@ pub struct TableArgs {
     /// Use tile-compressed HDUs as stored instead of the image header
     #[arg(long)]
     pub compressed: bool,
-    /// Number of worker threads [default: all cores]
+    /// Number of worker threads (0 = all cores) [default: all cores]
     #[arg(short = 'j', long = "jobs", value_name = "N")]
     pub jobs: Option<usize>,
     /// FITS files; `-` reads one FITS stream from stdin
