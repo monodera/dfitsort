@@ -6,6 +6,7 @@ pub mod error;
 pub mod filter;
 pub mod hdu;
 pub mod header;
+pub mod legacy;
 pub mod numeric;
 pub mod query;
 pub mod select;

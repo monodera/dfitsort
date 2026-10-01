@@ -42,3 +42,35 @@ fn legacy_subcommand_matches_the_symlinks() {
     assert_eq!(via_link.stdout, via_sub.stdout);
     assert_eq!(dfitsort().args(["legacy", "nope"]).output().unwrap().status.code(), Some(2));
 }
+
+#[test]
+fn legacy_fitsort_subcommand_in_a_pipe() {
+    let piped = Command::new("bash")
+        .arg("-c")
+        .arg(format!(
+            "{} legacy dfits eso1.fits | {} legacy fitsort OBJECT",
+            env!("CARGO_BIN_EXE_dfitsort"),
+            env!("CARGO_BIN_EXE_dfitsort")
+        ))
+        .current_dir(fixtures())
+        .output()
+        .unwrap();
+    assert_eq!(stdout(&piped), "FILE     \tOBJECT  \t\neso1.fits\tNGC 254 \t\n");
+}
+
+#[test]
+fn fitsort_has_no_fixed_line_or_name_limits() {
+    let bin = legacy_bin();
+    let dir = tempfile::tempdir().unwrap();
+    let long = dir.path().join(format!("{}.fits", "n".repeat(150)));
+    std::fs::copy(fixtures().join("eso1.fits"), &long).unwrap();
+    let script = format!("dfits '{}' | fitsort OBJECT", long.display());
+    let out = Command::new("bash")
+        .arg("-c")
+        .arg(script)
+        .env("PATH", format!("{}:{}", bin.path().display(), std::env::var("PATH").unwrap()))
+        .output()
+        .unwrap();
+    let text = stdout(&out);
+    assert!(text.lines().nth(1).unwrap().starts_with(&format!("{}\t", long.display())), "{text}");
+}

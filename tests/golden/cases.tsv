@@ -8,3 +8,11 @@ dfits_stdin	dfits - < strings.fits
 dfits_stdin_ext	dfits -x 1 - < mef.fits
 dfits_errors	dfits eso1.fits notfits.txt missing.fits empty.fits
 dfits_noargs	dfits
+fitsort_basic	dfits eso1.fits eso2.fits eso3.fits | fitsort DPR.CATG dpr.type EXPTIME OBJECT INS.FILT1.NAME NOPE
+fitsort_noheader	dfits eso1.fits eso2.fits eso3.fits | fitsort -d OBJECT EXPTIME
+fitsort_mef	dfits -x 0 mef.fits | fitsort EXTNAME DET.CHIP.ID OBJECT
+fitsort_strings	dfits strings.fits | fitsort LONGSTR QUOTED OBS.TARG.NAME
+fitsort_hierarch	dfits endkeys.fits | fitsort DPR.CATG DPR.TYPE INS.FILT1.NAME DET.DIT ENDTIME END-OBS OBJECT QUOTE "HIERARCH TNG DRS BJD"
+fitsort_stdin	dfits - < eso1.fits | fitsort OBJECT EXPTIME
+fitsort_noinput	echo nothing | fitsort OBJECT
+fitsort_noargs	fitsort

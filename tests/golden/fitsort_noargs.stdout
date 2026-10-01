@@ -1,0 +1,6 @@
+
+
+use : fitsort [-d] KEY1 KEY2 ... KEYn
+Input data is received from stdin
+See man page for more details and examples
+

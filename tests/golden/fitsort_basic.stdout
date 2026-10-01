@@ -1,0 +1,4 @@
+FILE     	DPR.CATG	DPR.TYPE	EXPTIME	OBJECT  	INS.FILT1.NAME	NOPE	
+eso1.fits	CALIB   	FLAT    	10.0   	NGC 254 	H             	    	
+eso2.fits	SCIENCE 	STD     	20.0   	NGC 255 	              	    	
+eso3.fits	SCIENCE 	OBJECT  	30.0   	NGC 256 	Ks            	    	
