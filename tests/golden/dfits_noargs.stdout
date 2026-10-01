@@ -1,0 +1,12 @@
+
+
+usage: dfits [-x xtnum] <list of FITS files>
+usage: dfits [-x xtnum] -
+
+The former version expects file names.
+The latter expects data coming in from stdin.
+
+-x xtnum specifies the extension header to print
+-x 0     specifies main header + all extensions
+
+

@@ -1,0 +1,20 @@
+====> file eso1.fits (main) <====
+SIMPLE  =                    T / conforms to FITS standard
+BITPIX  =                   16 / array data type
+NAXIS   =                    2 / number of array dimensions
+NAXIS1  =                    8
+NAXIS2  =                    8
+ORIGIN  = 'ESO-PARANAL'        / European Southern Observatory
+TELESCOP= 'ESO-VLT-U1'         / ESO <TEL>
+OBJECT  = 'NGC 254 '           / Original target.
+EXPTIME =                 10.0 / Integration time
+MJD-OBS =              60001.5 / Obs start
+HIERARCH ESO DPR CATG = 'CALIB   ' / Observation category
+HIERARCH ESO DPR TYPE = 'FLAT    ' / Observation type
+HIERARCH ESO DET DIT = 2.5 / Integration Time
+HIERARCH ESO DET NDIT = 2 / # of Sub-Integrations
+HIERARCH ESO INS FILT1 NAME = 'H       ' / Filter name.
+HIERARCH ESO OBS PROG ID = '0118.A-0001(A)' / ESO program identification
+END
+====> file notfits.txt (main) <====
+====> file empty.fits (main) <====

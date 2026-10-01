@@ -1,0 +1,109 @@
+====> file mef.fits (main) <====
+SIMPLE  =                    T / conforms to FITS standard
+BITPIX  =                    8 / array data type
+NAXIS   =                    0 / number of array dimensions
+EXTEND  =                    T
+ORIGIN  = 'ESO-PARANAL'        / European Southern Observatory
+TELESCOP= 'ESO-VLT-U1'         / ESO <TEL>
+OBJECT  = 'NGC 254 '           / Original target.
+EXPTIME =                 10.0 / Integration time
+MJD-OBS =              60001.5 / Obs start
+HIERARCH ESO DPR CATG = 'CALIB   ' / Observation category
+HIERARCH ESO DPR TYPE = 'FLAT    ' / Observation type
+HIERARCH ESO DET DIT = 2.5 / Integration Time
+HIERARCH ESO DET NDIT = 2 / # of Sub-Integrations
+HIERARCH ESO INS FILT1 NAME = 'H       ' / Filter name.
+HIERARCH ESO OBS PROG ID = '0118.A-0001(A)' / ESO program identification
+END
+====> xtension 1
+XTENSION= 'IMAGE   '           / Image extension
+BITPIX  =                   16 / array data type
+NAXIS   =                    2 / number of array dimensions
+NAXIS1  =                   16
+NAXIS2  =                    8
+PCOUNT  =                    0 / number of parameters
+GCOUNT  =                    1 / number of groups
+EXTNAME = 'CHIP1   '           / extension name
+EXTVER  =                    1
+HIERARCH ESO DET CHIP ID = 'CCD-1   '
+END
+====> xtension 2
+XTENSION= 'IMAGE   '           / Image extension
+BITPIX  =                   16 / array data type
+NAXIS   =                    2 / number of array dimensions
+NAXIS1  =                   16
+NAXIS2  =                    8
+PCOUNT  =                    0 / number of parameters
+GCOUNT  =                    1 / number of groups
+EXTNAME = 'CHIP2   '           / extension name
+EXTVER  =                    2
+HIERARCH ESO DET CHIP ID = 'CCD-2   '
+END
+====> xtension 3
+XTENSION= 'IMAGE   '           / Image extension
+BITPIX  =                   16 / array data type
+NAXIS   =                    2 / number of array dimensions
+NAXIS1  =                   16
+NAXIS2  =                    8
+PCOUNT  =                    0 / number of parameters
+GCOUNT  =                    1 / number of groups
+EXTNAME = 'CHIP3   '           / extension name
+EXTVER  =                    3
+HIERARCH ESO DET CHIP ID = 'CCD-3   '
+END
+====> file heap.fits (main) <====
+SIMPLE  =                    T / conforms to FITS standard
+BITPIX  =                    8 / array data type
+NAXIS   =                    0 / number of array dimensions
+EXTEND  =                    T
+END
+====> xtension 1
+XTENSION= 'BINTABLE'           / binary table extension
+BITPIX  =                    8 / array data type
+NAXIS   =                    2 / number of array dimensions
+NAXIS1  =                   12 / length of dimension 1
+NAXIS2  =                   50 / length of dimension 2
+PCOUNT  =                32820 / number of group parameters
+GCOUNT  =                    1 / number of groups
+TFIELDS =                    2 / number of table fields
+TTYPE1  = 'ID      '
+TFORM1  = 'J       '
+TTYPE2  = 'VLA     '
+TFORM2  = 'PJ(298) '
+EXTNAME = 'VLATAB  '           / extension name
+END
+====> xtension 2
+XTENSION= 'IMAGE   '           / Image extension
+BITPIX  =                  -32 / array data type
+NAXIS   =                    2 / number of array dimensions
+NAXIS1  =                   10
+NAXIS2  =                   10
+PCOUNT  =                    0 / number of parameters
+GCOUNT  =                    1 / number of groups
+EXTNAME = 'AFTERHEAP'          / extension name
+MARKER  = 'found-after-heap'
+END
+====> file groups.fits (main) <====
+SIMPLE  =                    T / conforms to FITS standard
+BITPIX  =                  -32
+NAXIS   =                    3
+NAXIS1  =                    0
+NAXIS2  =                    2
+NAXIS3  =                    3
+GROUPS  =                    T
+PCOUNT  =                    4
+GCOUNT  =                    5
+PTYPE1  =               'PAR1'
+PTYPE2  =               'PAR2'
+PTYPE3  =               'PAR3'
+PTYPE4  =               'PAR4'
+END
+====> xtension 1
+XTENSION= 'IMAGE   '           / Image extension
+BITPIX  =                    8
+NAXIS   =                    1
+NAXIS1  =                   10
+PCOUNT  =                    0
+GCOUNT  =                    1
+EXTNAME = 'AFTERGROUPS'
+END

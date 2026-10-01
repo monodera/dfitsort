@@ -1,0 +1,10 @@
+# name	shell command, run in tests/fixtures with dfits/fitsort first on PATH
+dfits_main	dfits eso1.fits eso2.fits eso3.fits
+dfits_all	dfits -x 0 mef.fits heap.fits groups.fits
+dfits_ext2	dfits -x 2 mef.fits heap.fits
+dfits_ext9	dfits -x 9 mef.fits
+dfits_endkeys_main	dfits endkeys.fits
+dfits_stdin	dfits - < strings.fits
+dfits_stdin_ext	dfits -x 1 - < mef.fits
+dfits_errors	dfits eso1.fits notfits.txt missing.fits empty.fits
+dfits_noargs	dfits

@@ -1,0 +1,35 @@
+====> file endkeys.fits (main) <====
+SIMPLE  =                    T / conforms to FITS standard
+BITPIX  =                   16
+NAXIS   =                    2
+ENDTIME = '23:59:59'           / END-prefixed keyword before NAXISn
+END-OBS = '2026-09-30'         / END-prefixed (Nobeyama style)
+NAXIS1  =                  100
+NAXIS2  =                  100
+EXTEND  =                    T
+ENDFRM  =                    3 / numeric END-prefixed keyword
+HIERARCH ESO DPR CATG = 'SCIENCE ' / standard ESO form
+HIERARCH ESO DPR TYPE= 'OBJECT'    / no blank before =
+HIERARCH ESO INS FILT1 NAME =   'Ks' / extra blanks after =
+HIERARCH ESO  DET DIT = 10.0     / double blank inside the name
+HIERARCH ESO det ndit = 6        / lowercase tokens
+HIERARCH TNG DRS BJD = 2459000.5 / other namespace
+HIERARCH ASTRO METADATA FIX DATE = '2026-01-01' / namespace-less (LSST)
+HIERARCH pfs_detectorMap_class = 'DistortedDetectorMap' / mixed case
+HIERARCH scaling.fiberPitch = 1.5 / dotted name (PFS)
+HIERARCH LONGKEYWORDNAME = 42
+HIERARCH ESO OBS NAME = 'END of night'
+DATA-TYP= 'OBJECT  '           / Subaru style
+W_PFDSGN=  6659525521533387424 / 19-digit integer
+DEXP    =              1.5D+03 / D exponent
+CPLX    = (1.0, -2.5)          / complex
+UNDEF   =                      / undefined value
+QUOTE   = 'O''HARA'
+OBJECT  = 'first   '
+OBJECT  = 'second  '           / duplicate keyword
+LONGSTR = 'This value is continued &'
+CONTINUE  'on a second card'
+AMPLIT  = 'literal &'          / & not followed by CONTINUE
+COMMENT   = this is commentary, not a value
+CONTINUE  'orphaned continuation'
+END

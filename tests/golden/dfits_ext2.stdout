@@ -1,0 +1,25 @@
+====> file mef.fits (main) <====
+====> xtension 2
+XTENSION= 'IMAGE   '           / Image extension
+BITPIX  =                   16 / array data type
+NAXIS   =                    2 / number of array dimensions
+NAXIS1  =                   16
+NAXIS2  =                    8
+PCOUNT  =                    0 / number of parameters
+GCOUNT  =                    1 / number of groups
+EXTNAME = 'CHIP2   '           / extension name
+EXTVER  =                    2
+HIERARCH ESO DET CHIP ID = 'CCD-2   '
+END
+====> file heap.fits (main) <====
+====> xtension 2
+XTENSION= 'IMAGE   '           / Image extension
+BITPIX  =                  -32 / array data type
+NAXIS   =                    2 / number of array dimensions
+NAXIS1  =                   10
+NAXIS2  =                   10
+PCOUNT  =                    0 / number of parameters
+GCOUNT  =                    1 / number of groups
+EXTNAME = 'AFTERHEAP'          / extension name
+MARKER  = 'found-after-heap'
+END
