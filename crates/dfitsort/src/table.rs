@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 use dfitsort_core::filter::Condition;
 use dfitsort_core::header::Header;
-use dfitsort_core::numeric::{cmp_num, parse_num};
+use dfitsort_core::numeric::{Num, parse_num};
 use dfitsort_core::query::KeySpec;
 use dfitsort_core::select::{HduSelector, read_selected};
 use dfitsort_core::value::Value;
@@ -175,13 +175,75 @@ fn sort_rows(rows: &mut [Row], keys: &[SortKey]) {
     });
 }
 
+/// Total order for sorting: numbers (numerically) before other values (bytewise).
 fn compare_values(a: &Value, b: &Value) -> Ordering {
     let (ta, tb) = (a.display_bytes(), b.display_bytes());
     let num = |t: &[u8]| std::str::from_utf8(t).ok().and_then(parse_num);
-    if let (Some(x), Some(y)) = (num(&ta), num(&tb)) {
-        if let Some(o) = cmp_num(x, y) {
-            return o;
+    match (num(&ta), num(&tb)) {
+        (Some(x), Some(y)) => cmp_numbers(x, y),
+        (Some(_), None) => Ordering::Less,
+        (None, Some(_)) => Ordering::Greater,
+        (None, None) => ta.cmp(&tb),
+    }
+}
+
+/// Numeric total order: by `f64` value, then reals before integers with the same `f64`
+/// value, then integers exactly (large integers that round alike still order correctly).
+fn cmp_numbers(a: Num, b: Num) -> Ordering {
+    let f = |n: Num| match n {
+        Num::Int(i) => i as f64,
+        Num::Real(r) => r,
+    };
+    f(a).total_cmp(&f(b)).then_with(|| match (a, b) {
+        (Num::Int(x), Num::Int(y)) => x.cmp(&y),
+        (Num::Real(_), Num::Int(_)) => Ordering::Less,
+        (Num::Int(_), Num::Real(_)) => Ordering::Greater,
+        (Num::Real(_), Num::Real(_)) => Ordering::Equal,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn int(t: &str) -> Value {
+        Value::Int(t.into())
+    }
+    fn real(t: &str) -> Value {
+        Value::Real(t.into())
+    }
+    fn s(t: &str) -> Value {
+        Value::Str(t.as_bytes().to_vec())
+    }
+
+    #[test]
+    fn mixed_values_sort_in_a_total_order() {
+        let mut values = vec![
+            s("abc"),
+            int("10"),
+            s("1x"),
+            real("9.5"),
+            int("9"),
+            int("9007199254740993"),
+            real("9007199254740992.0"),
+            int("9007199254740992"),
+        ];
+        values.sort_by(compare_values);
+        let shown: Vec<String> =
+            values.iter().map(|v| String::from_utf8_lossy(&v.display_bytes()).into_owned()).collect();
+        assert_eq!(
+            shown,
+            ["9", "9.5", "10", "9007199254740992.0", "9007199254740992", "9007199254740993", "1x", "abc"]
+        );
+        for a in &values {
+            for b in &values {
+                assert_eq!(compare_values(a, b), compare_values(b, a).reverse());
+                for c in &values {
+                    if compare_values(a, b).is_le() && compare_values(b, c).is_le() {
+                        assert!(compare_values(a, c).is_le());
+                    }
+                }
+            }
         }
     }
-    ta.cmp(&tb)
 }

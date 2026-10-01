@@ -122,6 +122,10 @@ fn sorting() {
         ["eso1.fits", "eso3.fits", "eso2.fits"]
     );
     assert_eq!(
+        files(table(&with_eso(&["-k", "OBJECT", "-s", "INS.FILT1.NAME:desc"]))),
+        ["eso3.fits", "eso1.fits", "eso2.fits"]
+    );
+    assert_eq!(
         files(table(&with_eso(&["-k", "OBJECT", "-s", "DPR.CATG", "-s", "EXPTIME:desc"]))),
         ["eso1.fits", "eso3.fits", "eso2.fits"]
     );
