@@ -57,7 +57,7 @@ dfitsort table -k OBJECT,EXPTIME -f json *.fits            # also tsv, csv
 | `-x SEL` | HDUs: omitted = primary, `0` = all, `N`, `N-M`, `EXTNAME`, `EXTNAME,EXTVER` |
 | `-k KEYS` | keywords, comma-separated, repeatable |
 | `-w COND` | keep rows where `KEY OP VALUE` holds; OP is `= != < <= > >= ~` (substring); numbers compare numerically; repeatable (AND, or OR with `--or`) |
-| `-s KEY[:desc]` | sort, repeatable; in a mixed column numbers sort before text; missing values last |
+| `-s KEY[:desc]` | sort, repeatable; ascending puts numbers before text (`:desc` reverses this); missing values always last |
 | `-f FORMAT` | `text` (default), `tsv`, `csv`, `json` |
 | `-d` | no header row |
 | `--missing STR` | placeholder for missing keywords |
@@ -110,9 +110,9 @@ length and number of keywords are gone.
 Byte identity holds for standard-conforming files. Known differences:
 
 - Errors that the C tools handle silently get a message on stderr.
-- A header cut off before `END` prints nothing (C prints the partial header).
+- A header cut off before `END` prints none of that header (the `====> file ... (main) <====` line is still printed for the file; C prints the partial header).
 - Bytes after the last HDU are ignored (C `dfits -x 0` on such a file exits 1, dfitsort 0).
-- An unusable data size in an extension stops the dump with an error (C scans on).
+- An unusable data size stops `-x 0` with an error, for any HDU (C scans on).
 
 ### Exit status
 
