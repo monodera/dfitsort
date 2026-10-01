@@ -3,6 +3,7 @@
 pub mod card;
 pub mod error;
 pub mod hdu;
+pub mod header;
 pub mod numeric;
 pub mod size;
 pub mod source;
