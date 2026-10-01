@@ -19,14 +19,15 @@ pub fn fitsort_key(arg: &[u8]) -> Vec<u8> {
     out
 }
 
-/// Keyword of a dfits line as fitsort.c sees it: the text before the first `=`
-/// (leading `=` skipped, as `strtok` does), trailing blanks removed. Lines without
-/// a following `=` never match: in C the token would still hold the newline.
+/// Keyword of a dfits line as fitsort.c sees it: the text up to the first `=` after any
+/// leading `=` characters, which stay part of the keyword (C ignores `strtok`'s return
+/// value and keeps the copy), trailing blanks removed. Lines without a following `=`
+/// never match: in C the token would still hold the newline.
 pub fn fitsort_line_keyword(line: &[u8]) -> Option<&[u8]> {
     let start = line.iter().position(|&b| b != b'=')?;
     let rest = &line[start..];
     let end = rest.iter().position(|&b| b == b'=')?;
-    Some(trim_end(&rest[..end]))
+    Some(trim_end(&line[..start + end]))
 }
 
 /// fitsort.c `getkeywordvalue`: quoted values verbatim between the first and the
@@ -167,6 +168,8 @@ mod tests {
         assert_eq!(fitsort_line_keyword(b"OBJECT  = 'x'"), Some(&b"OBJECT"[..]));
         assert_eq!(fitsort_line_keyword(b"HIERARCH ESO DPR CATG = 'x'"), Some(&b"HIERARCH ESO DPR CATG"[..]));
         assert_eq!(fitsort_line_keyword(b"COMMENT no equals"), None);
+        assert_eq!(fitsort_line_keyword(b"=LEAD   = 3"), Some(&b"=LEAD"[..]));
+        assert_eq!(fitsort_line_keyword(b"=="), None);
     }
 
     #[test]

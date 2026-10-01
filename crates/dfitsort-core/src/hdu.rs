@@ -4,6 +4,9 @@ use crate::card::{CardKind, classify};
 use crate::size::data_unit_size;
 use crate::{BLOCK_LEN, CARD_LEN, Error, Result, Source};
 
+/// Longest header accepted, in bytes. Far above any real header; protects against corrupt files and gzip bombs.
+pub const MAX_HEADER_LEN: usize = 64 * 1024 * 1024;
+
 /// One HDU's header as stored in the file.
 #[derive(Debug, Clone)]
 pub struct RawHdu {
@@ -89,6 +92,9 @@ impl HduReader {
             if n < BLOCK_LEN {
                 return Err(Error::TruncatedHeader { hdu: index });
             }
+            if raw.len() >= MAX_HEADER_LEN {
+                return Err(Error::HeaderTooLarge { hdu: index, limit: MAX_HEADER_LEN });
+            }
             n = self.source.read_full(&mut block)?;
         }
     }
@@ -98,7 +104,7 @@ impl HduReader {
 mod tests {
     use super::*;
     use crate::testkit::{card, data, header};
-    use std::io::{Cursor, Write};
+    use std::io::{Cursor, Read, Write};
 
     fn primary(extra: &[&str]) -> Vec<u8> {
         let mut cards = vec![
@@ -243,6 +249,14 @@ mod tests {
         let hdu = reader.next_hdu().unwrap().unwrap();
         assert!(contains(&hdu.raw, "NAXIS   = 'two'"));
         assert!(matches!(reader.next_hdu(), Err(Error::BadSize { hdu: 0, .. })));
+        assert!(matches!(reader.next_hdu(), Ok(None)));
+    }
+
+    #[test]
+    fn endless_header_is_capped() {
+        let endless = Cursor::new(card("SIMPLE  =                    T")).chain(std::io::repeat(b' '));
+        let mut reader = HduReader::new(Source::from_reader(endless).unwrap());
+        assert!(matches!(reader.next_hdu(), Err(Error::HeaderTooLarge { hdu: 0, .. })));
         assert!(matches!(reader.next_hdu(), Ok(None)));
     }
 

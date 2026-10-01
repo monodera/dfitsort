@@ -14,6 +14,8 @@ pub enum Error {
     TruncatedHeader { hdu: usize },
     #[error("HDU {hdu}: invalid data size ({reason})")]
     BadSize { hdu: usize, reason: String },
+    #[error("HDU {hdu}: header larger than {limit} bytes without an END card")]
+    HeaderTooLarge { hdu: usize, limit: usize },
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

@@ -48,10 +48,10 @@ pub fn data_unit_size(raw: &[u8], hdu: usize) -> Result<u64> {
         }
     }
     let naxis = naxis.unwrap_or(0);
-    if naxis == 0 {
+    if naxis == 0 && pcount == 0 {
         return Ok(0);
     }
-    if !(1..=999).contains(&naxis) {
+    if !(0..=999).contains(&naxis) {
         return Err(bad(format!("NAXIS = {naxis}")));
     }
     let bitpix = bitpix.ok_or_else(|| bad("missing BITPIX".into()))?;
@@ -71,8 +71,9 @@ pub fn data_unit_size(raw: &[u8], hdu: usize) -> Result<u64> {
     }
     let overflow = || bad("size does not fit in 64 bits".into());
     // Random groups (Eq. 4): NAXIS1 = 0 is not part of the product.
-    let counted = if groups && dims[0] == 0 { &dims[1..] } else { &dims[..] };
-    let mut product: u64 = 1;
+    // With NAXIS = 0 there is no array, only the PCOUNT bytes (Eq. 2).
+    let counted = if groups && dims.first() == Some(&0) { &dims[1..] } else { &dims[..] };
+    let mut product: u64 = if dims.is_empty() { 0 } else { 1 };
     for &d in counted {
         product = product.checked_mul(d).ok_or_else(overflow)?;
     }
@@ -197,6 +198,34 @@ mod tests {
             "NAXIS2  =                    4",
         ];
         assert!(matches!(size(&huge), Err(Error::BadSize { .. })));
+    }
+
+    #[test]
+    fn naxis_zero_with_pcount() {
+        let with_heap = [
+            "BITPIX  =                    8",
+            "NAXIS   =                    0",
+            "PCOUNT  =                 3000",
+            "GCOUNT  =                    1",
+        ];
+        assert_eq!(size(&with_heap).unwrap(), 5760);
+        assert_eq!(size(&["BITPIX  =                    8", "NAXIS   =                    0"]).unwrap(), 0);
+        assert!(matches!(
+            size(&["NAXIS   =                    0", "PCOUNT  =                   10"]),
+            Err(Error::BadSize { .. })
+        ));
+    }
+
+    #[test]
+    fn degenerate_axes() {
+        let negative =
+            ["BITPIX  =                    8", "NAXIS   =                    1", "NAXIS1  =                  -10"];
+        assert!(matches!(size(&negative), Err(Error::BadSize { .. })));
+        let many = ["BITPIX  =                    8", "NAXIS   =                 1000"];
+        assert!(matches!(size(&many), Err(Error::BadSize { .. })));
+        let empty =
+            ["BITPIX  =                    8", "NAXIS   =                    1", "NAXIS1  =                    0"];
+        assert_eq!(size(&empty).unwrap(), 0);
     }
 
     #[test]

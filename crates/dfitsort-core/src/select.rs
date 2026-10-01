@@ -117,9 +117,13 @@ pub fn read_selected(source: Source, selector: &HduSelector, logical: bool) -> F
             break;
         }
         if selector.matches_index(hdu.index) != Some(false) {
-            let raw = if logical && is_compressed_image(&hdu.raw) { logical_header(&hdu.raw) } else { hdu.raw };
-            let header = Header::parse(raw);
-            if selector.matches(hdu.index, &header) {
+            let converted = logical && is_compressed_image(&hdu.raw);
+            // The logical header drops EXTNAME = 'COMPRESSED_IMAGE', which astropy still finds by
+            // name, so a name selector also tries the stored header of a converted HDU.
+            let stored =
+                (converted && matches!(selector, HduSelector::Name { .. })).then(|| Header::parse(hdu.raw.clone()));
+            let header = Header::parse(if converted { logical_header(&hdu.raw) } else { hdu.raw });
+            if selector.matches(hdu.index, &header) || stored.is_some_and(|s| selector.matches(hdu.index, &s)) {
                 hdus.push(SelectedHdu { index: hdu.index, header });
             }
         }
@@ -198,6 +202,33 @@ mod tests {
         assert_eq!(indices(file(), "SCI,1"), [1]);
         assert!(indices(file(), "9").is_empty());
         assert!(indices(file(), "NOPE").is_empty());
+    }
+
+    #[test]
+    fn compressed_image_name_matches_the_stored_header() {
+        let mut bytes = header(&[
+            "SIMPLE  =                    T",
+            "BITPIX  =                    8",
+            "NAXIS   =                    0",
+        ]);
+        bytes.extend(header(&[
+            "XTENSION= 'BINTABLE'",
+            "BITPIX  =                    8",
+            "NAXIS   =                    2",
+            "NAXIS1  =                    8",
+            "NAXIS2  =                    1",
+            "PCOUNT  =                    0",
+            "GCOUNT  =                    1",
+            "TFIELDS =                    1",
+            "ZIMAGE  =                    T",
+            "ZBITPIX =                   16",
+            "ZNAXIS  =                    1",
+            "ZNAXIS1 =                   10",
+            "EXTNAME = 'COMPRESSED_IMAGE'",
+        ]));
+        bytes.extend(data(8));
+        assert_eq!(indices(bytes.clone(), "COMPRESSED_IMAGE"), [1]);
+        assert_eq!(indices(bytes, "compressed_image"), [1]);
     }
 
     #[test]
