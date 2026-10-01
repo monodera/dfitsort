@@ -8,6 +8,7 @@ pub mod hdu;
 pub mod header;
 pub mod numeric;
 pub mod query;
+pub mod select;
 pub mod size;
 pub mod source;
 #[doc(hidden)]
