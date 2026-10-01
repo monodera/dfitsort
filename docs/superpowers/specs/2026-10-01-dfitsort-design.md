@@ -155,8 +155,9 @@ dfitsort legacy fitsort <legacy fitsort args>
 | `NAME` | every HDU whose EXTNAME matches (case-insensitive, any EXTVER) |
 | `NAME,VER` | the HDU whose EXTNAME matches and whose EXTVER (missing means 1) equals VER |
 
-SEL is parsed as follows: all digits → number; `digits-digits` → range;
-anything else → EXTNAME, with an optional `,VER`. A range or name that matches
+SEL is parsed as follows: all digits → number; `digits-digits` → range (blanks
+around the numbers are ignored); `digits-` followed by anything but digits is a
+usage error; anything else → EXTNAME, with an optional `,VER`. A range or name that matches
 nothing selects no rows and is not an error, the same as legacy `-x N` beyond the
 last extension.
 

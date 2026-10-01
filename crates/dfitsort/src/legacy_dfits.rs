@@ -127,7 +127,11 @@ fn dump_hdus(source: Source, xtnum: i64, text: &mut Vec<u8>) -> (i32, Option<Str
                     push_cards(text, &hdu.raw);
                 }
                 if n == xtnum {
-                    return (0, None);
+                    // A cut header has printed its cards; the next call yields the error, as for -x 0.
+                    return match hdu.is_truncated().then(|| reader.next_hdu()) {
+                        Some(Err(e)) => (1, Some(format!("error: {e}\n"))),
+                        _ => (0, None),
+                    };
                 }
             }
             Ok(None) => return (0, None),

@@ -31,7 +31,7 @@ pub struct HduReader {
     next_index: usize,
     pending_skip: u64,
     finished: bool,
-    /// A data-size error found after a header was returned; reported by the next call.
+    /// A data-size or truncation error found after a header was returned; reported by the next call.
     deferred: Option<Error>,
 }
 

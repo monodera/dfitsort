@@ -31,7 +31,7 @@ impl HduSelector {
             return Ok(if n == 0 { HduSelector::All } else { HduSelector::Index(n) });
         }
         if let Some((a, b)) = s.split_once('-') {
-            if let (Ok(a), Ok(b)) = (a.parse::<usize>(), b.parse::<usize>()) {
+            if let (Ok(a), Ok(b)) = (a.trim().parse::<usize>(), b.trim().parse::<usize>()) {
                 if a > b {
                     return Err(format!("bad HDU range {s:?}"));
                 }
@@ -39,7 +39,8 @@ impl HduSelector {
             }
         }
         // `digits-` followed by anything but digits is a malformed range, not an EXTNAME.
-        if s.split_once('-').is_some_and(|(a, _)| !a.is_empty() && a.bytes().all(|b| b.is_ascii_digit())) {
+        if s.split_once('-').is_some_and(|(a, _)| !a.trim().is_empty() && a.trim().bytes().all(|b| b.is_ascii_digit()))
+        {
             return Err(format!("bad HDU range {s:?}"));
         }
         match s.split_once(',') {
@@ -191,6 +192,7 @@ mod tests {
         assert_eq!(HduSelector::parse("0"), Ok(HduSelector::All));
         assert_eq!(HduSelector::parse("3"), Ok(HduSelector::Index(3)));
         assert_eq!(HduSelector::parse("1-3"), Ok(HduSelector::Range(1, 3)));
+        assert_eq!(HduSelector::parse(" 1 - 3"), Ok(HduSelector::Range(1, 3)));
         assert_eq!(HduSelector::parse("sci,2"), Ok(HduSelector::Name { name: "SCI".into(), ver: Some(2) }));
         assert_eq!(HduSelector::parse("SCI-A"), Ok(HduSelector::Name { name: "SCI-A".into(), ver: None }));
         assert!(HduSelector::parse("3-1").is_err());

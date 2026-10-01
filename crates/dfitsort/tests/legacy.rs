@@ -31,6 +31,37 @@ fn dfits_prints_the_cards_of_a_header_cut_before_end() {
 }
 
 #[test]
+fn dfits_reports_an_extension_header_cut_before_end() {
+    let bin = legacy_bin();
+    let cards = |cards: &[&str]| -> Vec<u8> { cards.iter().flat_map(|c| format!("{c:<80}").into_bytes()).collect() };
+    let mut bytes = cards(&[
+        "SIMPLE  =                    T",
+        "BITPIX  =                    8",
+        "NAXIS   =                    0",
+        "END",
+    ]);
+    bytes.resize(2880, b' ');
+    bytes.extend(cards(&[
+        "XTENSION= 'IMAGE   '",
+        "BITPIX  =                    8",
+        "NAXIS   =                    0",
+        "PCOUNT  =                    0",
+        "GCOUNT  =                    1",
+    ]));
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("cut.fits");
+    std::fs::write(&path, bytes).unwrap();
+    let path = path.to_str().unwrap();
+    for args in [vec!["-x", "1", path], vec!["-x", "0", path]] {
+        let out = legacy(&bin, "dfits", &args);
+        assert_eq!(out.status.code(), Some(1), "{args:?}");
+        assert!(stdout(&out).contains("====> xtension 1\nXTENSION= 'IMAGE   '"), "{args:?}");
+        assert!(stdout(&out).ends_with("GCOUNT  =                    1\n"), "{args:?}");
+        assert!(!out.stderr.is_empty(), "{args:?}");
+    }
+}
+
+#[test]
 fn dfits_reads_gzip_files_and_streams() {
     let bin = legacy_bin();
     let plain = stdout(&legacy(&bin, "dfits", &["strings.fits"]));
