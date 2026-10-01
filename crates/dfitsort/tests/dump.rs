@@ -23,7 +23,9 @@ fn hdu_selection() {
     let none = run(&["dump", "-x", "9", "mef.fits"]);
     assert!(none.status.success());
     assert_eq!(stdout(&none), "====> file mef.fits (main) <====\n");
-    assert_eq!(run(&["dump", "-x", "3-1", "mef.fits"]).status.code(), Some(2));
+    for bad in ["3-1", "1-", "-3"] {
+        assert_eq!(run(&["dump", "-x", bad, "mef.fits"]).status.code(), Some(2), "-x {bad}");
+    }
 }
 
 #[test]
@@ -81,6 +83,9 @@ fn bad_files_are_reported_and_skipped() {
     assert!(text.contains("====> file eso1.fits (main) <====\nSIMPLE"));
     assert!(text.contains("====> file eso2.fits (main) <====\nSIMPLE"));
     let errors = stderr(&out);
+    // The header cut before END still prints the cards that were read.
+    assert!(text.contains("====> file truncated.fits (main) <====\nSIMPLE  =                    T"));
+    assert!(text.contains("KEY32   =                   32\n====> file eso2.fits"));
     for name in ["notfits.txt", "missing.fits", "empty.fits", "truncated.fits", dir_arg] {
         assert!(errors.contains(&format!("dfitsort: {name}: ")), "no error for {name}: {errors}");
     }
@@ -134,4 +139,38 @@ fn closed_stdout_exits_quietly() {
     let out = child.wait_with_output().unwrap();
     assert!(out.status.success(), "status {:?}", out.status);
     assert!(out.stderr.is_empty(), "stderr: {}", stderr(&out));
+}
+
+/// A header of blank-padded cards plus END, padded to a whole block.
+#[cfg(unix)]
+fn fits_header(cards: &[&str]) -> Vec<u8> {
+    let mut v: Vec<u8> = cards.iter().chain(&["END"]).flat_map(|c| format!("{c:<80}").into_bytes()).collect();
+    v.resize(v.len().div_ceil(2880) * 2880, b' ');
+    v
+}
+
+#[cfg(unix)]
+#[test]
+fn fifo_input_with_large_data_units() {
+    let mut bytes = fits_header(&[
+        "SIMPLE  =                    T",
+        "BITPIX  =                    8",
+        "NAXIS   =                    1",
+        "NAXIS1  =               100000",
+    ]);
+    bytes.resize(bytes.len() + 100_000usize.div_ceil(2880) * 2880, 0);
+    bytes.extend(fits_header(&[
+        "XTENSION= 'IMAGE   '",
+        "BITPIX  =                    8",
+        "NAXIS   =                    0",
+    ]));
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("pipe");
+    assert!(std::process::Command::new("mkfifo").arg(&path).status().unwrap().success());
+    let writer_path = path.clone();
+    let writer = std::thread::spawn(move || std::fs::write(writer_path, bytes).unwrap());
+    let out = dfitsort().args(["dump", "-x", "0"]).arg(&path).output().unwrap();
+    writer.join().unwrap();
+    assert!(out.status.success(), "{}", stderr(&out));
+    assert!(stdout(&out).contains("====> xtension 1\nXTENSION= 'IMAGE   '"));
 }

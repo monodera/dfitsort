@@ -12,6 +12,8 @@ pub trait RowWriter {
     fn row(&mut self, row: &Row) -> io::Result<()>;
     /// Writes anything buffered (and the header when there were no rows), then flushes.
     fn finish(&mut self) -> io::Result<()>;
+    /// Flushes what has been written so far, so that a following stderr line appears after it.
+    fn flush(&mut self) -> io::Result<()>;
 }
 
 pub fn writer<'a, W: Write + 'a>(
@@ -52,7 +54,7 @@ struct Text<W> {
 
 impl<W: Write> RowWriter for Text<W> {
     fn row(&mut self, row: &Row) -> io::Result<()> {
-        self.rows.push(cells(row, &self.missing));
+        self.rows.push(cells(row, &self.missing).iter().map(|c| printable(c)).collect());
         Ok(())
     }
 
@@ -77,6 +79,15 @@ impl<W: Write> RowWriter for Text<W> {
         }
         self.out.flush()
     }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.out.flush()
+    }
+}
+
+/// Control bytes (a newline inside a string value, say) would break the table layout.
+fn printable(cell: &[u8]) -> Vec<u8> {
+    cell.iter().map(|&b| if b < 0x20 || b == 0x7f { b' ' } else { b }).collect()
 }
 
 fn width(cell: &[u8]) -> usize {
@@ -127,6 +138,10 @@ impl<W: Write> RowWriter for Delimited<W> {
         self.heading_once()?;
         self.out.flush()
     }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.out.flush()
+    }
 }
 
 fn write_csv_field(out: &mut impl Write, field: &[u8]) -> io::Result<()> {
@@ -173,6 +188,10 @@ impl<W: Write> RowWriter for Json<W> {
         self.out.write_all(if self.count == 0 { b"[]\n" } else { b"\n]\n" })?;
         self.out.flush()
     }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.out.flush()
+    }
 }
 
 fn json_str(s: &str) -> String {
@@ -188,12 +207,35 @@ fn text_of(bytes: &[u8]) -> String {
 }
 
 fn json_value(value: Option<&Value>) -> String {
-    let number = |t: &str| json_number(t).unwrap_or_else(|| json_str(t));
+    // JSON has no infinities: a real that overflows a double (1E999) becomes null.
+    let number = |t: &str| match json_number(t) {
+        Some(n) if n.parse::<f64>().is_ok_and(|v| !v.is_finite()) => "null".to_string(),
+        Some(n) => n,
+        None => json_str(t),
+    };
     match value {
         None | Some(Value::Undefined) => "null".into(),
         Some(Value::Logical(b)) => b.to_string(),
         Some(Value::Int(t)) | Some(Value::Real(t)) => number(t),
         Some(Value::Complex(re, im)) => format!("[{},{}]", number(re), number(im)),
         Some(Value::Str(s)) => json_str(&text_of(s)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn control_bytes_become_spaces_in_text_cells() {
+        assert_eq!(printable(b"a\nb\tc\x7fd\x1b[0m caf\xc3\xa9"), b"a b c d [0m caf\xc3\xa9");
+    }
+
+    #[test]
+    fn non_finite_json_numbers_are_null() {
+        assert_eq!(json_value(Some(&Value::Real("1E999".into()))), "null");
+        assert_eq!(json_value(Some(&Value::Real("-1.0D999".into()))), "null");
+        assert_eq!(json_value(Some(&Value::Complex("1.5".into(), "1E999".into()))), "[1.5,null]");
+        assert_eq!(json_value(Some(&Value::Real("1.5D+03".into()))), "1.5E3");
     }
 }

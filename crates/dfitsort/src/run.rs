@@ -6,8 +6,9 @@ use rayon::prelude::*;
 
 /// Files processed in parallel before their output is written: many when each
 /// result is small (table rows), fewer when each holds whole headers (dump).
+/// Per-file work is tiny; a small chunk bounds memory and starts output early.
 pub const SMALL_RESULTS: usize = 16384;
-pub const LARGE_RESULTS: usize = 1024;
+pub const LARGE_RESULTS: usize = 64;
 
 /// Initial size of a per-file output buffer; most headers fit without regrowing.
 pub const TEXT_CAPACITY: usize = 32 * 1024;

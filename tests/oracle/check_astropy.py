@@ -33,6 +33,8 @@ def same(expected, actual) -> bool:
     if isinstance(expected, complex):
         return isinstance(actual, list) and len(actual) == 2 and same(expected.real, actual[0]) and same(expected.imag, actual[1])
     if isinstance(expected, (int, float)):
+        if isinstance(expected, float) and not math.isfinite(expected):
+            return actual is None  # JSON has no infinities: dfitsort emits null
         if isinstance(actual, bool) or not isinstance(actual, (int, float)):
             return False
         if isinstance(expected, int) and isinstance(actual, int):
@@ -67,9 +69,9 @@ def check_values(binary: str, path: Path, index: int, header: fits.Header, store
         return [f"{path.name}[{index}]: expected one row, got {len(rows)}"]
     values = rows[0]["values"]
     return [
-        f"{path.name}[{index}] {key}: astropy {header[key]!r}, dfitsort {values.get(key)!r}"
+        f"{path.name}[{index}] {key}: astropy {header[key]!r}, dfitsort {values[key]!r}"
         for key in keys
-        if not same(header[key], values.get(key))
+        if not same(header[key], values[key])
     ]
 
 

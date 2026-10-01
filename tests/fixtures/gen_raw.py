@@ -69,6 +69,7 @@ ENDKEYS_PRIMARY = [
     "HIERARCH ESO OBS NAME = 'END of night'",
     "DATA-TYP= 'OBJECT  '           / Subaru style",
     kv("W_PFDSGN", 6659525521533387424, "19-digit integer"),
+    kv("HUGE", "1E999", "overflows a double"),
     kv("DEXP", "1.5D+03", "D exponent"),
     "CPLX    = (1.0, -2.5)          / complex",
     "UNDEF   =                      / undefined value",

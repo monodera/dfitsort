@@ -54,7 +54,7 @@ fn tsv_csv_and_missing_placeholder() {
 
 #[test]
 fn json_values_are_typed() {
-    let keys = "W_PFDSGN,DEXP,CPLX,UNDEF,QUOTE,OBJECT,LONGSTR,AMPLIT,EXTEND,NOPE";
+    let keys = "W_PFDSGN,HUGE,DEXP,CPLX,UNDEF,QUOTE,OBJECT,LONGSTR,AMPLIT,EXTEND,NOPE";
     let v = json(&["-k", keys, "endkeys.fits"]);
     let row = &v[0];
     assert_eq!(row["file"], "endkeys.fits");
@@ -63,6 +63,7 @@ fn json_values_are_typed() {
     let values = &row["values"];
     assert_eq!(values["W_PFDSGN"].to_string(), "6659525521533387424");
     assert_eq!(values["DEXP"], 1500.0);
+    assert!(values["HUGE"].is_null(), "non-finite numbers are not valid JSON");
     assert_eq!(values["CPLX"], serde_json::json!([1.0, -2.5]));
     assert!(values["UNDEF"].is_null() && values["NOPE"].is_null());
     assert_eq!(values["QUOTE"], "O'HARA");
@@ -155,4 +156,13 @@ fn errors_still_print_the_other_rows() {
     assert_eq!(out.status.code(), Some(1));
     assert_eq!(stdout(&out), "FILE       OBJECT\neso1.fits  NGC 254\neso2.fits  NGC 255\n");
     assert!(stderr(&out).contains("dfitsort: missing.fits: "));
+}
+
+#[test]
+fn empty_keyword_specs_are_usage_errors() {
+    for keys in ["", ",", "OBJECT,,EXPTIME"] {
+        let out = run(&["table", "-k", keys, "eso1.fits"]);
+        assert_eq!(out.status.code(), Some(2), "-k {keys:?}");
+        assert!(stderr(&out).contains("dfitsort: -k: empty keyword"), "{}", stderr(&out));
+    }
 }

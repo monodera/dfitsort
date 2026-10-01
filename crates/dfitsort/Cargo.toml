@@ -8,6 +8,8 @@ license.workspace = true
 readme = "../../README.md"
 keywords = ["fits", "astronomy", "dfits", "fitsort", "header"]
 categories = ["command-line-utilities", "science"]
+# The integration tests read ../../tests/fixtures, which the crate tarball does not contain.
+exclude = ["tests/"]
 
 [dependencies]
 clap = { version = "4", features = ["derive", "env"] }

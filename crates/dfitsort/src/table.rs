@@ -66,10 +66,15 @@ pub fn run(args: TableArgs) -> i32 {
             return 2;
         }
     };
+    let keys: Vec<KeySpec> = args.keys.iter().map(|k| KeySpec::new(k.trim(), &args.ns)).collect();
+    if args.keys.iter().any(|k| k.trim().is_empty()) {
+        eprintln!("dfitsort: -k: empty keyword");
+        return 2;
+    }
     let query = Query {
         selector,
         logical: !args.compressed,
-        keys: args.keys.iter().map(|k| KeySpec::new(k.trim(), &args.ns)).collect(),
+        keys,
         conditions,
         any: args.or,
         sort: args.sort.iter().map(|s| parse_sort(s, &args.ns)).collect(),
@@ -93,6 +98,7 @@ pub fn run(args: TableArgs) -> i32 {
             |path: &PathBuf| rows_for(path, &query),
             |path, (rows, error)| {
                 if let Some(msg) = error {
+                    writer.flush()?; // keep stderr after the stdout rows of the same file on a terminal
                     failed = true;
                     eprintln!("dfitsort: {}: {msg}", path.display());
                 }

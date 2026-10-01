@@ -27,6 +27,7 @@ pub fn run(args: DumpArgs) -> i32 {
         |path, (text, error)| {
             out.write_all(&text)?;
             if let Some(msg) = error {
+                out.flush()?; // keep stderr after the stdout text of the same file on a terminal
                 failed = true;
                 eprintln!("dfitsort: {}: {msg}", path.display());
             }
