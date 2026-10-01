@@ -33,7 +33,10 @@ impl<R: Read> Read for Members<R> {
             }
             // The member ended cleanly; another one follows only if gzip magic does.
             let mut rest = self.decoder.take().expect("decoder present").into_inner();
-            if rest.fill_buf()?.starts_with(&GZIP_MAGIC) {
+            // `fill_buf` shows only what is buffered, which may end after the first magic byte of the
+            // next member; such a head must continue so that GzDecoder validates (and rejects a cut) header.
+            let head = rest.fill_buf()?;
+            if head.first() == Some(&GZIP_MAGIC[0]) && head.get(1).is_none_or(|b| *b == GZIP_MAGIC[1]) {
                 self.decoder = Some(GzDecoder::new(rest));
             }
         }
@@ -200,6 +203,39 @@ mod tests {
         bad_crc[n - 6] ^= 0xff;
         assert!(read_to_end(bad_crc).is_err(), "bad CRC");
         assert_eq!(read_to_end(whole).unwrap(), DATA.repeat(100));
+    }
+
+    /// A gzip member whose compressed length is exactly `len`, padded through a long FNAME field.
+    fn member_of_len(payload: &[u8], len: usize) -> Vec<u8> {
+        let build = |name_len: usize| {
+            let mut enc =
+                flate2::GzBuilder::new().filename(vec![b'x'; name_len]).write(Vec::new(), flate2::Compression::fast());
+            enc.write_all(payload).unwrap();
+            enc.finish().unwrap()
+        };
+        let base = build(1).len();
+        let member = build(1 + len - base);
+        assert_eq!(member.len(), len);
+        member
+    }
+
+    #[test]
+    fn member_boundary_at_buffer_edge_is_handled() {
+        // Only the first gzip magic byte of member B fits in the first buffer fill.
+        let (a, b) = (DATA.repeat(10), DATA.repeat(20));
+        let mut bytes = member_of_len(&a, super::BUF_LEN - 1);
+        bytes.extend(gz(&b));
+        let expected = [a.clone(), b.clone()].concat();
+        assert_eq!(read_to_end(bytes.clone()).unwrap(), expected);
+        let f = temp_with(&bytes);
+        let mut s = Source::open(f.path()).unwrap();
+        let mut out = vec![0u8; 10_000];
+        let n = s.read_full(&mut out).unwrap();
+        assert_eq!(&out[..n], expected.as_slice());
+        // A lone 0x1f after a member is a cut gzip header: reported, never silently dropped.
+        let mut cut = gz(DATA);
+        cut.push(0x1f);
+        assert!(read_to_end(cut).is_err());
     }
 
     #[test]

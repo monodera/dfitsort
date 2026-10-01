@@ -203,6 +203,7 @@ mod tests {
         assert_eq!(HduSelector::parse("-3"), Ok(HduSelector::Name { name: "-3".into(), ver: None }));
         assert!(HduSelector::parse("SCI,x").is_err());
         assert!(HduSelector::parse(" ").is_err());
+        assert_eq!(HduSelector::parse(" sci "), Ok(HduSelector::Name { name: "SCI".into(), ver: None }));
     }
 
     #[test]
