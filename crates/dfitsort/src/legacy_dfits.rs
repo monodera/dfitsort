@@ -35,7 +35,7 @@ fn dfits(args: &[OsString], out: &mut impl Write, code: &mut i32) -> io::Result<
                 let (rc, message) = dump_hdus(source, xtnum, &mut text);
                 (text, message, rc)
             }
-            Err(_) => (Vec::new(), Some("error reading input\n"), 1),
+            Err(_) => (Vec::new(), Some("error reading input\n".to_string()), 1),
         };
         out.write_all(&text)?;
         if let Some(m) = message {
@@ -94,18 +94,19 @@ fn render(path: &Path, xtnum: i64) -> (Vec<u8>, Option<String>, i32) {
     text.extend_from_slice(&os_bytes(path.as_os_str()));
     text.extend_from_slice(b" (main) <====\n");
     let (rc, message) = dump_hdus(source, xtnum, &mut text);
-    (text, message.map(str::to_string), rc)
+    (text, message, rc)
 }
 
 /// dfits.c `dump_fits_filter`, but seeking over data units instead of scanning them.
-fn dump_hdus(source: Source, xtnum: i64, text: &mut Vec<u8>) -> (i32, Option<&'static str>) {
+/// Errors that dfits.c reports silently (a failed read) get a message here too.
+fn dump_hdus(source: Source, xtnum: i64, text: &mut Vec<u8>) -> (i32, Option<String>) {
     let mut reader = HduReader::new(source);
     match reader.next_hdu() {
         Ok(Some(main)) if xtnum < 1 => push_cards(text, &main.raw),
         Ok(Some(_)) => {}
-        Ok(None) | Err(Error::TooShort) => return (1, Some("error reading input\n")),
-        Err(Error::NotFits) => return (1, Some("not a FITS file\n")),
-        Err(_) => return (1, None),
+        Ok(None) | Err(Error::TooShort) => return (1, Some("error reading input\n".into())),
+        Err(Error::NotFits) => return (1, Some("not a FITS file\n".into())),
+        Err(e) => return (1, Some(format!("error: {e}\n"))),
     }
     if xtnum < 0 {
         return (0, None);
@@ -123,7 +124,7 @@ fn dump_hdus(source: Source, xtnum: i64, text: &mut Vec<u8>) -> (i32, Option<&'s
                 }
             }
             Ok(None) => return (0, None),
-            Err(_) => return (1, None),
+            Err(e) => return (1, Some(format!("error: {e}\n"))),
         }
     }
 }

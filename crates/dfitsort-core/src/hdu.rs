@@ -21,17 +21,25 @@ pub struct HduReader {
     next_index: usize,
     pending_skip: u64,
     finished: bool,
+    /// A data-size error found after a header was returned; reported by the next call.
+    deferred: Option<Error>,
 }
 
 impl HduReader {
     pub fn new(source: Source) -> Self {
-        HduReader { source, next_index: 0, pending_skip: 0, finished: false }
+        HduReader { source, next_index: 0, pending_skip: 0, finished: false, deferred: None }
     }
 
     /// Reads the next HDU header; `Ok(None)` after the last HDU. Bytes after the
     /// last HDU that do not start with `XTENSION` are ignored (Standard §3.5), and
-    /// so is a data unit cut short by EOF. A cut `XTENSION` header is an error.
+    /// so is a data unit cut short by EOF. A cut `XTENSION` header is an error. A header
+    /// whose data size cannot be computed is still returned; the size error comes from the
+    /// next call, which ends the file.
     pub fn next_hdu(&mut self) -> Result<Option<RawHdu>> {
+        if let Some(e) = self.deferred.take() {
+            self.finished = true;
+            return Err(e);
+        }
         if self.finished {
             return Ok(None);
         }
@@ -46,7 +54,7 @@ impl HduReader {
         let index = self.next_index;
         self.source.skip(std::mem::take(&mut self.pending_skip))?;
         let mut block = vec![0u8; BLOCK_LEN];
-        let n = self.source.read_full(&mut block)?;
+        let mut n = self.source.read_full(&mut block)?;
         if index == 0 {
             if n < CARD_LEN {
                 return Err(Error::TooShort);
@@ -54,28 +62,34 @@ impl HduReader {
             if !block.starts_with(b"SIMPLE  =") {
                 return Err(Error::NotFits);
             }
-            if n < BLOCK_LEN {
-                return Err(Error::TruncatedHeader { hdu: 0 });
-            }
         } else if !block[..n].starts_with(b"XTENSION") {
             return Ok(None);
-        } else if n < BLOCK_LEN {
-            return Err(Error::TruncatedHeader { hdu: index });
         }
         let mut raw = Vec::with_capacity(BLOCK_LEN);
         loop {
-            for card in block.chunks_exact(CARD_LEN) {
+            // A short last block (a file not padded to 2880 bytes) is accepted when END is
+            // among its whole cards.
+            for card in block[..n].chunks_exact(CARD_LEN) {
                 raw.extend_from_slice(card);
                 if classify(card) == CardKind::End {
-                    let data_size = data_unit_size(&raw, index)?;
-                    self.pending_skip = data_size;
                     self.next_index += 1;
-                    return Ok(Some(RawHdu { index, raw, data_size }));
+                    let hdu = match data_unit_size(&raw, index) {
+                        Ok(data_size) => {
+                            self.pending_skip = data_size;
+                            RawHdu { index, raw, data_size }
+                        }
+                        Err(e) => {
+                            self.deferred = Some(e);
+                            RawHdu { index, raw, data_size: 0 }
+                        }
+                    };
+                    return Ok(Some(hdu));
                 }
             }
-            if self.source.read_full(&mut block)? < BLOCK_LEN {
+            if n < BLOCK_LEN {
                 return Err(Error::TruncatedHeader { hdu: index });
             }
+            n = self.source.read_full(&mut block)?;
         }
     }
 }
@@ -214,6 +228,25 @@ mod tests {
     }
 
     #[test]
+    fn unpadded_files_and_bad_sizes() {
+        let mut unpadded: Vec<u8> =
+            ["SIMPLE  =                    T", "BITPIX  =                    8", "NAXIS   =                    0"]
+                .iter()
+                .flat_map(|c| card(c))
+                .collect();
+        unpadded.extend(card("END"));
+        let hdus = read_all(stream(unpadded));
+        assert_eq!(hdus.len(), 1);
+        assert_eq!(hdus[0].raw.len(), 4 * CARD_LEN);
+        let mut reader =
+            stream(header(&["SIMPLE  =                    T", "BITPIX  =                    8", "NAXIS   = 'two'"]));
+        let hdu = reader.next_hdu().unwrap().unwrap();
+        assert!(contains(&hdu.raw, "NAXIS   = 'two'"));
+        assert!(matches!(reader.next_hdu(), Err(Error::BadSize { hdu: 0, .. })));
+        assert!(matches!(reader.next_hdu(), Ok(None)));
+    }
+
+    #[test]
     fn errors() {
         assert!(matches!(stream(Vec::new()).next_hdu(), Err(Error::TooShort)));
         assert!(matches!(stream(b"hello".to_vec()).next_hdu(), Err(Error::TooShort)));
@@ -225,7 +258,7 @@ mod tests {
         assert!(matches!(reader.next_hdu(), Err(Error::TruncatedHeader { hdu: 0 })));
         assert!(matches!(reader.next_hdu(), Ok(None)));
         let mut cut_ext = primary(&[]);
-        cut_ext.extend(&image_ext("CUT")[..1000]);
+        cut_ext.extend(&image_ext("CUT")[..400]); // cut before its END card
         let mut reader = stream(cut_ext);
         assert!(reader.next_hdu().unwrap().is_some());
         assert!(matches!(reader.next_hdu(), Err(Error::TruncatedHeader { hdu: 1 })));
