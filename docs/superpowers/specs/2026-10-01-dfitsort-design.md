@@ -115,7 +115,7 @@ dfitsort/
 | `compressed` | Builds the logical image header for `ZIMAGE=T` binary tables |
 | `query` | Normalises user keyword specs into an ordered list of candidate names. Resolves them against a `Header` |
 | `filter` | Parses `KEY OP VALUE` conditions and evaluates them on a `Header` |
-| `legacy` | Byte-exact ports of the dfits.c framing and the fitsort.c text parser and value extractor |
+| `legacy` | Byte-exact ports of the fitsort.c text parser, value extractor and table printer (the dfits.c framing lives in the CLI crate's `legacy_dfits`) |
 
 The core API is synchronous and works per file. The CLI decides how to
 parallelise. Raw header bytes are kept so `dump` can print cards verbatim.
