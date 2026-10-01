@@ -1,5 +1,6 @@
 //! FITS header reading for dfitsort.
 
+pub mod card;
 pub mod error;
 pub mod source;
 #[doc(hidden)]
