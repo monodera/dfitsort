@@ -1,0 +1,15 @@
+[package]
+name = "dfitsort"
+description = "Fast FITS header listing and keyword tables; successor of ESO dfits/fitsort"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+clap = { version = "4", features = ["derive", "env"] }
+dfitsort-core = { path = "../dfitsort-core", version = "0.1.0" }
+rayon = "1"
+
+[dev-dependencies]
+tempfile = "3"
