@@ -1,6 +1,7 @@
 //! FITS header reading for dfitsort.
 
 pub mod card;
+pub mod compressed;
 pub mod error;
 pub mod hdu;
 pub mod header;
