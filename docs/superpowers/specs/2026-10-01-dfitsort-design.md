@@ -152,7 +152,8 @@ dfitsort legacy fitsort <legacy fitsort args>
 | `0` | primary and all extensions (legacy meaning) |
 | `N` | extension N (1-based; primary is 0 in physical numbering) |
 | `N-M` | extensions N through M |
-| `NAME` or `NAME,VER` | the HDU(s) whose EXTNAME (and EXTVER, default 1) match, case-insensitive |
+| `NAME` | every HDU whose EXTNAME matches (case-insensitive, any EXTVER) |
+| `NAME,VER` | the HDU whose EXTNAME matches and whose EXTVER (missing means 1) equals VER |
 
 SEL is parsed as follows: all digits → number; `digits-digits` → range;
 anything else → EXTNAME, with an optional `,VER`. A range or name that matches
@@ -259,7 +260,9 @@ In text, tsv and csv, value bytes are written as they are.
 - **Mandatory keywords** are found wherever they appear in the header; their order
   is not enforced.
 - **Truncation.** EOF inside a header, or a missing END, is a per-file error. EOF
-  inside the data area is not an error unless a later HDU was requested.
+  inside a data area ends the file without an error: there are simply no more HDUs.
+- **Trailing bytes.** Bytes after the last HDU that do not start a new `XTENSION`
+  block (zero fill, junk, partial blocks) are ignored (Standard §3.5).
 - **gzip input.** Skipping a data unit means decompressing it. This is inherent to
   the format and should be documented.
 
