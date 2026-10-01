@@ -4,34 +4,38 @@ use std::fs::File;
 use std::io::{self, BufRead, BufReader, Read};
 use std::path::Path;
 
-use flate2::read::MultiGzDecoder;
+use flate2::bufread::GzDecoder;
 
 const BUF_LEN: usize = 32 * 1024;
 const GZIP_MAGIC: [u8; 2] = [0x1f, 0x8b];
 /// `errno` of "Illegal seek" on Linux and macOS, for platforms where it does not map to `ErrorKind::NotSeekable`.
 const ESPIPE: i32 = 29;
 
-/// Treats an error after some decompressed data (typically NUL padding after the last gzip member) as EOF.
-struct TrailingGarbageOk<R> {
-    inner: R,
-    produced: bool,
+/// Gzip decoding member by member: bytes after the last member (NUL padding, say) end the stream,
+/// while an error inside a member (cut short, bad CRC) is reported.
+struct Members<R> {
+    decoder: Option<GzDecoder<BufReader<R>>>,
 }
 
-impl<R> TrailingGarbageOk<R> {
-    fn new(inner: R) -> Self {
-        TrailingGarbageOk { inner, produced: false }
+impl<R: Read> Members<R> {
+    fn new(reader: BufReader<R>) -> Self {
+        Members { decoder: Some(GzDecoder::new(reader)) }
     }
 }
 
-impl<R: Read> Read for TrailingGarbageOk<R> {
+impl<R: Read> Read for Members<R> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        match self.inner.read(buf) {
-            Ok(n) => {
-                self.produced |= n > 0;
-                Ok(n)
+        loop {
+            let Some(decoder) = self.decoder.as_mut() else { return Ok(0) };
+            let n = decoder.read(buf)?;
+            if n > 0 || buf.is_empty() {
+                return Ok(n);
             }
-            Err(_) if self.produced => Ok(0),
-            Err(e) => Err(e),
+            // The member ended cleanly; another one follows only if gzip magic does.
+            let mut rest = self.decoder.take().expect("decoder present").into_inner();
+            if rest.fill_buf()?.starts_with(&GZIP_MAGIC) {
+                self.decoder = Some(GzDecoder::new(rest));
+            }
         }
     }
 }
@@ -51,7 +55,7 @@ impl Source {
     pub fn open(path: &Path) -> io::Result<Source> {
         let mut file = BufReader::with_capacity(BUF_LEN, File::open(path)?);
         if file.fill_buf()?.starts_with(&GZIP_MAGIC) {
-            return Ok(Source::stream(TrailingGarbageOk::new(MultiGzDecoder::new(file))));
+            return Ok(Source::stream(Members::new(file)));
         }
         Ok(Source { inner: Inner::File(file) })
     }
@@ -62,7 +66,7 @@ impl Source {
         // A pipe may deliver fewer bytes than requested; the magic is checked on
         // whatever arrived first, which in practice always includes two bytes.
         if buffered.fill_buf()?.starts_with(&GZIP_MAGIC) {
-            return Ok(Source::stream(TrailingGarbageOk::new(MultiGzDecoder::new(buffered))));
+            return Ok(Source::stream(Members::new(buffered)));
         }
         Ok(Source::stream(buffered))
     }
@@ -117,7 +121,7 @@ impl Source {
 #[cfg(test)]
 mod tests {
     use super::Source;
-    use std::io::{Cursor, Write};
+    use std::io::{self, Cursor, Write};
 
     const DATA: &[u8] = b"0123456789abcdefghij";
 
@@ -177,6 +181,33 @@ mod tests {
         assert_eq!(rest_after_skip(Source::open(f.path()).unwrap(), 0), DATA);
         let s = Source::from_reader(Cursor::new(bytes)).unwrap();
         assert_eq!(rest_after_skip(s, 0), DATA);
+    }
+
+    fn read_to_end(bytes: Vec<u8>) -> io::Result<Vec<u8>> {
+        let mut s = Source::from_reader(Cursor::new(bytes))?;
+        let mut out = vec![0u8; 10_000];
+        let n = s.read_full(&mut out)?;
+        out.truncate(n);
+        Ok(out)
+    }
+
+    #[test]
+    fn damaged_gzip_is_an_error() {
+        let whole = gz(&DATA.repeat(100));
+        assert!(read_to_end(whole[..whole.len() / 2].to_vec()).is_err(), "cut member");
+        let mut bad_crc = whole.clone();
+        let n = bad_crc.len();
+        bad_crc[n - 6] ^= 0xff;
+        assert!(read_to_end(bad_crc).is_err(), "bad CRC");
+        assert_eq!(read_to_end(whole).unwrap(), DATA.repeat(100));
+    }
+
+    #[test]
+    fn concatenated_gzip_members_are_all_read() {
+        let mut bytes = gz(DATA);
+        bytes.extend(gz(DATA));
+        bytes.extend([0u8; 10]);
+        assert_eq!(read_to_end(bytes).unwrap(), DATA.repeat(2));
     }
 
     #[cfg(unix)]
