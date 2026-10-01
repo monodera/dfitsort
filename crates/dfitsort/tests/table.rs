@@ -143,6 +143,10 @@ fn extensions_and_compressed_images() {
     assert_eq!(v[0]["values"], serde_json::json!({"NAXIS1": 64, "BITPIX": 16, "OBJECT": "NGC 253"}));
     assert_eq!(v[1]["values"]["BITPIX"], 32);
     assert_eq!(json(&["--compressed", "-x", "1", "-k", "BITPIX", "compressed.fits.fz"])[0]["values"]["BITPIX"], 8);
+    let unnamed = json(&["-x", "COMPRESSED_IMAGE", "-k", "NAXIS1", "compressed.fits.fz"]);
+    assert_eq!(unnamed.as_array().unwrap().len(), 1);
+    assert_eq!(unnamed[0]["hdu"], 3);
+    assert_eq!(unnamed[0]["values"]["NAXIS1"], 16);
 }
 
 #[test]

@@ -71,7 +71,9 @@ def main() -> None:
     # GZIP_2 tiles embed a gzip timestamp: the data bytes of this file (not its headers)
     # change from one run to the next.
     err = fits.CompImageHDU(np.arange(32 * 32, dtype=np.int32).reshape(32, 32), name="ERR", compression_type="GZIP_2")
-    fits.HDUList([fits.PrimaryHDU(), sci, err]).writeto(HERE / "compressed.fits.fz", overwrite=True)
+    # Unnamed: astropy writes EXTNAME = 'COMPRESSED_IMAGE'.
+    unnamed = fits.CompImageHDU(np.arange(16 * 16, dtype=np.int16).reshape(16, 16), compression_type="RICE_1")
+    fits.HDUList([fits.PrimaryHDU(), sci, err, unnamed]).writeto(HERE / "compressed.fits.fz", overwrite=True)
 
 
 if __name__ == "__main__":
