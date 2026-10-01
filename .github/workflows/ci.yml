@@ -50,4 +50,5 @@ jobs:
         with:
           workspaces: fuzz
       - run: mkdir -p fuzz/corpus/headers && cp tests/fixtures/*.fits* fuzz/corpus/headers/
-      - run: cargo fuzz run headers fuzz/corpus/headers -- -max_total_time=120
+      # The prebuilt cargo-fuzz is a musl binary and defaults to the musl target, which ASan rejects.
+      - run: cargo fuzz run --target x86_64-unknown-linux-gnu headers fuzz/corpus/headers -- -max_total_time=120
