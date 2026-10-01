@@ -4,8 +4,9 @@ use std::io;
 
 use rayon::prelude::*;
 
-/// Files processed in parallel before their output is written (each result
-/// holds whole headers, so the chunk is kept moderate).
+/// Files processed in parallel before their output is written: many when each
+/// result is small (table rows), fewer when each holds whole headers (dump).
+pub const SMALL_RESULTS: usize = 16384;
 pub const LARGE_RESULTS: usize = 1024;
 
 /// Initial size of a per-file output buffer; most headers fit without regrowing.
