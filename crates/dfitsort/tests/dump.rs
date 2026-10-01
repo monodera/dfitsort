@@ -23,9 +23,16 @@ fn hdu_selection() {
     let none = run(&["dump", "-x", "9", "mef.fits"]);
     assert!(none.status.success());
     assert_eq!(stdout(&none), "====> file mef.fits (main) <====\n");
-    for bad in ["3-1", "1-", "-3"] {
+    for bad in ["3-1", "1-", "1-x"] {
         assert_eq!(run(&["dump", "-x", bad, "mef.fits"]).status.code(), Some(2), "-x {bad}");
     }
+}
+
+#[test]
+fn extnames_may_contain_dashes() {
+    let out = run(&["dump", "-x", "CHIP-1", "mef.fits"]);
+    assert!(out.status.success());
+    assert_eq!(stdout(&out), "====> file mef.fits (main) <====\n");
 }
 
 #[test]

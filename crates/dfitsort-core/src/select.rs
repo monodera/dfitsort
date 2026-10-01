@@ -38,12 +38,8 @@ impl HduSelector {
                 return Ok(HduSelector::Range(a, b));
             }
         }
-        // Looks like a range (`1-`, `1-x`, `-3`) but is not one: a typo, not an EXTNAME.
-        let digits_then_dash =
-            s.split_once('-').is_some_and(|(a, _)| !a.is_empty() && a.bytes().all(|b| b.is_ascii_digit()));
-        let dash_then_digits =
-            s.rsplit_once('-').is_some_and(|(_, b)| !b.is_empty() && b.bytes().all(|b| b.is_ascii_digit()));
-        if digits_then_dash || dash_then_digits {
+        // `digits-` followed by anything but digits is a malformed range, not an EXTNAME.
+        if s.split_once('-').is_some_and(|(a, _)| !a.is_empty() && a.bytes().all(|b| b.is_ascii_digit())) {
             return Err(format!("bad HDU range {s:?}"));
         }
         match s.split_once(',') {
@@ -198,9 +194,11 @@ mod tests {
         assert_eq!(HduSelector::parse("sci,2"), Ok(HduSelector::Name { name: "SCI".into(), ver: Some(2) }));
         assert_eq!(HduSelector::parse("SCI-A"), Ok(HduSelector::Name { name: "SCI-A".into(), ver: None }));
         assert!(HduSelector::parse("3-1").is_err());
-        for bad in ["1-", "1-x", "-3"] {
+        for bad in ["1-", "1-x", "12-abc"] {
             assert!(HduSelector::parse(bad).is_err(), "{bad}");
         }
+        assert_eq!(HduSelector::parse("CHIP-1"), Ok(HduSelector::Name { name: "CHIP-1".into(), ver: None }));
+        assert_eq!(HduSelector::parse("-3"), Ok(HduSelector::Name { name: "-3".into(), ver: None }));
         assert!(HduSelector::parse("SCI,x").is_err());
         assert!(HduSelector::parse(" ").is_err());
     }
