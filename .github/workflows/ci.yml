@@ -4,33 +4,50 @@ on:
   push:
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --all --check
-      - run: cargo clippy --workspace --all-targets -- -D warnings
-      - run: cargo test --workspace
-      - uses: astral-sh/setup-uv@v6
-      - run: cargo build -p dfitsort
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - run: cargo test --workspace --locked
+      # setup-uv has no floating major tag since v8.
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          cache-dependency-glob: tests/oracle/check_astropy.py
+      - run: cargo build -p dfitsort --locked
       - run: uv run --no-project --with astropy --with numpy tests/oracle/check_astropy.py target/debug/dfitsort
 
   msrv:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@1.85
-      - run: cargo check --workspace --all-targets
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --workspace --all-targets --locked
 
   fuzz:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@nightly
-      - run: cargo install --locked cargo-fuzz
+      - uses: actions/checkout@v7
+      # Pinned so a nightly regression cannot fail CI; bump by hand.
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly-2026-09-30
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-fuzz
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: fuzz
       - run: mkdir -p fuzz/corpus/headers && cp tests/fixtures/*.fits* fuzz/corpus/headers/
       - run: cargo fuzz run headers fuzz/corpus/headers -- -max_total_time=120

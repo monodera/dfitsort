@@ -11,7 +11,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo test --workspace --locked
 
@@ -26,7 +26,7 @@ jobs:
           - { os: macos-latest, target: x86_64-apple-darwin, build: cargo build }
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
@@ -37,6 +37,6 @@ jobs:
       - run: scripts/package.sh ${{ matrix.target }}
         env:
           BUILD: ${{ matrix.build }}
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: dist/*.tar.gz
