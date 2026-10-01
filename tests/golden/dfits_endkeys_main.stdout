@@ -21,6 +21,7 @@ HIERARCH LONGKEYWORDNAME = 42
 HIERARCH ESO OBS NAME = 'END of night'
 DATA-TYP= 'OBJECT  '           / Subaru style
 W_PFDSGN=  6659525521533387424 / 19-digit integer
+HUGE    =                1E999 / overflows a double
 DEXP    =              1.5D+03 / D exponent
 CPLX    = (1.0, -2.5)          / complex
 UNDEF   =                      / undefined value

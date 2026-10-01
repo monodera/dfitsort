@@ -38,6 +38,14 @@ impl HduSelector {
                 return Ok(HduSelector::Range(a, b));
             }
         }
+        // Looks like a range (`1-`, `1-x`, `-3`) but is not one: a typo, not an EXTNAME.
+        let digits_then_dash =
+            s.split_once('-').is_some_and(|(a, _)| !a.is_empty() && a.bytes().all(|b| b.is_ascii_digit()));
+        let dash_then_digits =
+            s.rsplit_once('-').is_some_and(|(_, b)| !b.is_empty() && b.bytes().all(|b| b.is_ascii_digit()));
+        if digits_then_dash || dash_then_digits {
+            return Err(format!("bad HDU range {s:?}"));
+        }
         match s.split_once(',') {
             Some((name, ver)) => {
                 let ver = ver.trim().parse().map_err(|_| format!("bad EXTVER in {s:?}"))?;
@@ -116,6 +124,7 @@ pub fn read_selected(source: Source, selector: &HduSelector, logical: bool) -> F
         if selector.last_index().is_some_and(|last| hdu.index > last) {
             break;
         }
+        let truncated = hdu.is_truncated();
         if selector.matches_index(hdu.index) != Some(false) {
             let converted = logical && is_compressed_image(&hdu.raw);
             // The logical header drops EXTNAME = 'COMPRESSED_IMAGE', which astropy still finds by
@@ -128,7 +137,9 @@ pub fn read_selected(source: Source, selector: &HduSelector, logical: bool) -> F
             }
         }
         if selector.last_index() == Some(hdu.index) {
-            break;
+            // Stopping here is not an excuse to hide that the file ends inside this header.
+            let error = if truncated { reader.next_hdu().err() } else { None };
+            return FileHdus { hdus, error };
         }
     }
     FileHdus { hdus, error: None }
@@ -187,6 +198,9 @@ mod tests {
         assert_eq!(HduSelector::parse("sci,2"), Ok(HduSelector::Name { name: "SCI".into(), ver: Some(2) }));
         assert_eq!(HduSelector::parse("SCI-A"), Ok(HduSelector::Name { name: "SCI-A".into(), ver: None }));
         assert!(HduSelector::parse("3-1").is_err());
+        for bad in ["1-", "1-x", "-3"] {
+            assert!(HduSelector::parse(bad).is_err(), "{bad}");
+        }
         assert!(HduSelector::parse("SCI,x").is_err());
         assert!(HduSelector::parse(" ").is_err());
     }
@@ -236,7 +250,7 @@ mod tests {
         let mut bytes = file();
         bytes.truncate(2880 * 3 + 100); // cuts the header of HDU 2
         let out = read_selected(Source::from_reader(Cursor::new(bytes)).unwrap(), &HduSelector::All, true);
-        assert_eq!(out.hdus.iter().map(|h| h.index).collect::<Vec<_>>(), [0, 1]);
+        assert_eq!(out.hdus.iter().map(|h| h.index).collect::<Vec<_>>(), [0, 1, 2]); // the partial header of HDU 2 is kept
         assert!(matches!(out.error, Some(Error::TruncatedHeader { hdu: 2 })));
     }
 }

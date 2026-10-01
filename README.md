@@ -110,7 +110,6 @@ length and number of keywords are gone.
 Byte identity holds for standard-conforming files. Known differences:
 
 - Errors that the C tools handle silently get a message on stderr.
-- A header cut off before `END` prints none of that header (the `====> file ... (main) <====` line is still printed for the file; C prints the partial header).
 - Bytes after the last HDU are ignored (C `dfits -x 0` on such a file exits 1, dfitsort 0).
 - An unusable data size stops `-x 0` with an error, for any HDU (C scans on).
 

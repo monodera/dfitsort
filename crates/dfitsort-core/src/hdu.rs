@@ -12,10 +12,17 @@ pub const MAX_HEADER_LEN: usize = 64 * 1024 * 1024;
 pub struct RawHdu {
     /// Physical HDU number (primary = 0).
     pub index: usize,
-    /// Header cards up to and including END (a multiple of 80 bytes).
+    /// Header cards up to and including END (a multiple of 80 bytes); the cards read so far if the file ends first.
     pub raw: Vec<u8>,
     /// Padded size of the following data unit in bytes.
     pub data_size: u64,
+}
+
+impl RawHdu {
+    /// True when the file ended before the END card; `raw` then holds only the cards that were read.
+    pub fn is_truncated(&self) -> bool {
+        self.raw.rchunks_exact(CARD_LEN).next().is_none_or(|last| classify(last) != CardKind::End)
+    }
 }
 
 /// Iterates over the HDUs of one FITS stream.
@@ -35,9 +42,9 @@ impl HduReader {
 
     /// Reads the next HDU header; `Ok(None)` after the last HDU. Bytes after the
     /// last HDU that do not start with `XTENSION` are ignored (Standard §3.5), and
-    /// so is a data unit cut short by EOF. A cut `XTENSION` header is an error. A header
-    /// whose data size cannot be computed is still returned; the size error comes from the
-    /// next call, which ends the file.
+    /// so is a data unit cut short by EOF. A header cut before END is returned with the
+    /// cards read so far. A header whose data size cannot be computed is also still returned; in both
+    /// cases the error comes from the next call, which ends the file.
     pub fn next_hdu(&mut self) -> Result<Option<RawHdu>> {
         if let Some(e) = self.deferred.take() {
             self.finished = true;
@@ -90,7 +97,13 @@ impl HduReader {
                 }
             }
             if n < BLOCK_LEN {
-                return Err(Error::TruncatedHeader { hdu: index });
+                // The cards read so far are still returned (as C dfits prints them); the error follows.
+                if raw.is_empty() {
+                    return Err(Error::TruncatedHeader { hdu: index });
+                }
+                self.next_index += 1;
+                self.deferred = Some(Error::TruncatedHeader { hdu: index });
+                return Ok(Some(RawHdu { index, raw, data_size: 0 }));
             }
             if raw.len() >= MAX_HEADER_LEN {
                 return Err(Error::HeaderTooLarge { hdu: index, limit: MAX_HEADER_LEN });
@@ -212,6 +225,46 @@ mod tests {
     }
 
     #[test]
+    fn extension_with_naxis_zero_and_pcount_has_no_data() {
+        let mut bytes = primary(&[]);
+        bytes.extend(header(&[
+            "XTENSION= 'BINTABLE'",
+            "BITPIX  =                    8",
+            "NAXIS   =                    0",
+            "PCOUNT  =                 3000",
+            "GCOUNT  =                    1",
+            "TFIELDS =                    0",
+            "EXTNAME = 'WEIRD'",
+        ]));
+        bytes.extend(image_ext("AFTER"));
+        let hdus = read_all(stream(bytes));
+        assert_eq!(hdus.iter().map(|h| (h.index, h.data_size)).collect::<Vec<_>>(), [(0, 2880), (1, 0), (2, 8640)]);
+        assert!(contains(&hdus[2].raw, "EXTNAME = 'AFTER'"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn fifo_with_large_data_unit() {
+        let mut bytes = header(&[
+            "SIMPLE  =                    T",
+            "BITPIX  =                    8",
+            "NAXIS   =                    1",
+            "NAXIS1  =               100000",
+        ]);
+        bytes.extend(data(100_000));
+        bytes.extend(image_ext("AFTER"));
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("pipe");
+        assert!(std::process::Command::new("mkfifo").arg(&path).status().unwrap().success());
+        let writer_path = path.clone();
+        let writer = std::thread::spawn(move || std::fs::write(writer_path, bytes).unwrap());
+        let hdus = read_all(HduReader::new(Source::open(&path).unwrap()));
+        writer.join().unwrap();
+        assert_eq!(hdus.len(), 2);
+        assert!(contains(&hdus[1].raw, "EXTNAME = 'AFTER'"));
+    }
+
+    #[test]
     fn trailing_bytes_after_the_last_hdu_are_ignored() {
         for tail in [vec![0u8; 1000], vec![0u8; 2880], b"JUNK".repeat(720), Vec::new()] {
             let mut bytes = primary(&[]);
@@ -282,12 +335,16 @@ mod tests {
         let mut truncated = card("SIMPLE  =                    T");
         truncated.extend(&no_end[80..]);
         let mut reader = stream(truncated);
+        let partial = reader.next_hdu().unwrap().unwrap();
+        assert_eq!((partial.index, partial.raw.len(), partial.data_size), (0, 36 * CARD_LEN, 0));
         assert!(matches!(reader.next_hdu(), Err(Error::TruncatedHeader { hdu: 0 })));
         assert!(matches!(reader.next_hdu(), Ok(None)));
         let mut cut_ext = primary(&[]);
         cut_ext.extend(&image_ext("CUT")[..400]); // cut before its END card
         let mut reader = stream(cut_ext);
         assert!(reader.next_hdu().unwrap().is_some());
+        assert_eq!(reader.next_hdu().unwrap().unwrap().raw.len(), 5 * CARD_LEN); // 400 bytes: five whole cards
         assert!(matches!(reader.next_hdu(), Err(Error::TruncatedHeader { hdu: 1 })));
+        assert!(matches!(reader.next_hdu(), Ok(None)));
     }
 }

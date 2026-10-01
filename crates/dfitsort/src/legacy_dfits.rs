@@ -39,6 +39,7 @@ fn dfits(args: &[OsString], out: &mut impl Write, code: &mut i32) -> io::Result<
         };
         out.write_all(&text)?;
         if let Some(m) = message {
+            out.flush()?;
             eprint!("{m}");
         }
         *code = rc;
@@ -52,6 +53,7 @@ fn dfits(args: &[OsString], out: &mut impl Write, code: &mut i32) -> io::Result<
         |_, (text, message, rc)| {
             out.write_all(&text)?;
             if let Some(m) = message {
+                out.flush()?;
                 eprint!("{m}");
             }
             *code += rc;
@@ -101,14 +103,19 @@ fn render(path: &Path, xtnum: i64) -> (Vec<u8>, Option<String>, i32) {
 /// Errors that dfits.c reports silently (a failed read) get a message here too.
 fn dump_hdus(source: Source, xtnum: i64, text: &mut Vec<u8>) -> (i32, Option<String>) {
     let mut reader = HduReader::new(source);
-    match reader.next_hdu() {
-        Ok(Some(main)) if xtnum < 1 => push_cards(text, &main.raw),
-        Ok(Some(_)) => {}
+    let cut = match reader.next_hdu() {
+        Ok(Some(main)) => {
+            if xtnum < 1 {
+                push_cards(text, &main.raw);
+            }
+            main.is_truncated()
+        }
         Ok(None) | Err(Error::TooShort) => return (1, Some("error reading input\n".into())),
         Err(Error::NotFits) => return (1, Some("not a FITS file\n".into())),
         Err(e) => return (1, Some(format!("error: {e}\n"))),
-    }
-    if xtnum < 0 {
+    };
+    // A header cut before END has printed its cards; the next call reports the error, as C's exit status does.
+    if xtnum < 0 && !cut {
         return (0, None);
     }
     loop {

@@ -21,6 +21,16 @@ fn dfits_never_mistakes_data_for_an_extension() {
 }
 
 #[test]
+fn dfits_prints_the_cards_of_a_header_cut_before_end() {
+    let bin = legacy_bin();
+    let out = legacy(&bin, "dfits", &["truncated.fits"]);
+    assert_eq!(out.status.code(), Some(1));
+    let text = stdout(&out);
+    assert!(text.starts_with("====> file truncated.fits (main) <====\nSIMPLE  ="));
+    assert!(text.ends_with("KEY32   =                   32\n"));
+}
+
+#[test]
 fn dfits_reads_gzip_files_and_streams() {
     let bin = legacy_bin();
     let plain = stdout(&legacy(&bin, "dfits", &["strings.fits"]));
