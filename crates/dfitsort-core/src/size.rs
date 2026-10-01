@@ -48,7 +48,8 @@ pub fn data_unit_size(raw: &[u8], hdu: usize) -> Result<u64> {
         }
     }
     let naxis = naxis.unwrap_or(0);
-    if naxis == 0 && pcount == 0 {
+    // Eq. 1 (primary) has no PCOUNT term; a PCOUNT heap with NAXIS = 0 exists only in conforming extensions.
+    if naxis == 0 && (pcount <= 0 || !raw.starts_with(b"XTENSION")) {
         return Ok(0);
     }
     if !(0..=999).contains(&naxis) {
@@ -203,6 +204,7 @@ mod tests {
     #[test]
     fn naxis_zero_with_pcount() {
         let with_heap = [
+            "XTENSION= 'BINTABLE'",
             "BITPIX  =                    8",
             "NAXIS   =                    0",
             "PCOUNT  =                 3000",
@@ -211,9 +213,24 @@ mod tests {
         assert_eq!(size(&with_heap).unwrap(), 5760);
         assert_eq!(size(&["BITPIX  =                    8", "NAXIS   =                    0"]).unwrap(), 0);
         assert!(matches!(
-            size(&["NAXIS   =                    0", "PCOUNT  =                   10"]),
+            size(&["XTENSION= 'BINTABLE'", "NAXIS   =                    0", "PCOUNT  =                   10"]),
             Err(Error::BadSize { .. })
         ));
+    }
+
+    #[test]
+    fn primary_ignores_pcount() {
+        let stray = [
+            "SIMPLE  =                    T",
+            "BITPIX  =                    8",
+            "NAXIS   =                    0",
+            "PCOUNT  =                 3000",
+        ];
+        assert_eq!(size(&stray).unwrap(), 0);
+        let no_bitpix =
+            ["SIMPLE  =                    T", "NAXIS   =                    0", "PCOUNT  =                 3000"];
+        assert_eq!(size(&no_bitpix).unwrap(), 0);
+        assert_eq!(size(&["SIMPLE  =                    T", "NAXIS   =                    0"]).unwrap(), 0);
     }
 
     #[test]

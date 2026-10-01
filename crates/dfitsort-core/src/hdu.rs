@@ -199,6 +199,19 @@ mod tests {
     }
 
     #[test]
+    fn primary_with_stray_pcount_has_no_data() {
+        let mut bytes = header(&[
+            "SIMPLE  =                    T",
+            "BITPIX  =                    8",
+            "NAXIS   =                    0",
+            "PCOUNT  =                 3000",
+        ]);
+        bytes.extend(image_ext("A"));
+        let hdus = read_all(stream(bytes));
+        assert_eq!(hdus.iter().map(|h| (h.index, h.data_size)).collect::<Vec<_>>(), [(0, 0), (1, 8640)]);
+    }
+
+    #[test]
     fn trailing_bytes_after_the_last_hdu_are_ignored() {
         for tail in [vec![0u8; 1000], vec![0u8; 2880], b"JUNK".repeat(720), Vec::new()] {
             let mut bytes = primary(&[]);
