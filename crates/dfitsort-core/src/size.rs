@@ -11,10 +11,30 @@ pub fn data_unit_size(raw: &[u8], hdu: usize) -> Result<u64> {
     for card in raw.chunks_exact(CARD_LEN) {
         let key = &card[..8];
         match key {
-            b"BITPIX  " => bitpix = int_value(card),
-            b"NAXIS   " => naxis = int_value(card),
-            b"PCOUNT  " => pcount = int_value(card).unwrap_or(0),
-            b"GCOUNT  " => gcount = int_value(card).unwrap_or(1),
+            b"BITPIX  " => {
+                if card[8] == b'=' && int_value(card).is_none() {
+                    return Err(bad("BITPIX is not an integer".into()));
+                }
+                bitpix = int_value(card);
+            }
+            b"NAXIS   " => {
+                if card[8] == b'=' && int_value(card).is_none() {
+                    return Err(bad("NAXIS is not an integer".into()));
+                }
+                naxis = int_value(card);
+            }
+            b"PCOUNT  " => {
+                if card[8] == b'=' && int_value(card).is_none() {
+                    return Err(bad("PCOUNT is not an integer".into()));
+                }
+                pcount = int_value(card).unwrap_or(0);
+            }
+            b"GCOUNT  " => {
+                if card[8] == b'=' && int_value(card).is_none() {
+                    return Err(bad("GCOUNT is not an integer".into()));
+                }
+                gcount = int_value(card).unwrap_or(1);
+            }
             b"GROUPS  " => groups = card[8] == b'=' && value_text(card) == "T",
             b"END     " => break,
             _ => {
@@ -177,5 +197,35 @@ mod tests {
             "NAXIS2  =                    4",
         ];
         assert!(matches!(size(&huge), Err(Error::BadSize { .. })));
+    }
+
+    #[test]
+    fn malformed_mandatory_values_are_errors() {
+        assert!(matches!(
+            size(&["BITPIX  =                    8", "NAXIS   = 'two'", "NAXIS1  =                   10",]),
+            Err(Error::BadSize { .. })
+        ));
+        assert!(matches!(
+            size(&["BITPIX  = sixteen", "NAXIS   =                    1", "NAXIS1  =                   10",]),
+            Err(Error::BadSize { .. })
+        ));
+        assert!(matches!(
+            size(&[
+                "BITPIX  =                    8",
+                "NAXIS   =                    1",
+                "NAXIS1  =                   10",
+                "PCOUNT  = x",
+            ]),
+            Err(Error::BadSize { .. })
+        ));
+        assert!(matches!(
+            size(&[
+                "BITPIX  =                    8",
+                "NAXIS   =                    1",
+                "NAXIS1  =                   10",
+                "GCOUNT  = 1.5",
+            ]),
+            Err(Error::BadSize { .. })
+        ));
     }
 }
