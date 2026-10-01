@@ -77,6 +77,9 @@ A name with dots and no blanks is tried as, in order:
 | `scaling.fiberPitch` | `HIERARCH scaling.fiberPitch` (a name containing dots) |
 | `"ESO DET DIT"` | `HIERARCH ESO DET DIT` |
 
+A dot name that starts with `HIERARCH.` spells out the whole keyword, so
+`HIERARCH.ESO.PRO.CATG` matches `HIERARCH ESO PRO CATG` and `--ns` is not added.
+
 String values have `''` unescaped, trailing blanks removed and CONTINUE cards
 joined. Numbers keep their exact text (no rounding of 19-digit integers). When a
 keyword appears twice, the first occurrence wins.

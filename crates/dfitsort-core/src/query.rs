@@ -15,15 +15,20 @@ impl KeySpec {
     /// `ns` is the HIERARCH namespace for dot specs (`"ESO"`, or `""` for none).
     pub fn new(spec: &str, ns: &str) -> KeySpec {
         let mut norm = normalize_name(spec);
+        // `HIERARCH.ESO.DET.DIT` spells out the whole name, like `HIERARCH ESO DET DIT`: no namespace added.
+        let mut explicit = false;
         if let Some(rest) = norm.strip_prefix("HIERARCH ") {
             norm = rest.to_string();
+        } else if let Some(rest) = norm.strip_prefix("HIERARCH.").filter(|r| !r.is_empty()) {
+            norm = rest.to_string();
+            explicit = true;
         }
         let mut candidates = Vec::new();
         if !norm.contains(' ') && norm.contains('.') {
             let joined = norm.split('.').filter(|t| !t.is_empty()).collect::<Vec<_>>().join(" ");
             if !joined.is_empty() {
                 let ns = normalize_name(ns);
-                if !ns.is_empty() {
+                if !explicit && !ns.is_empty() {
                     candidates.push(format!("{ns} {joined}"));
                 }
                 candidates.push(joined);
@@ -73,6 +78,16 @@ mod tests {
     }
 
     #[test]
+    fn hierarch_dot_prefix_names_the_whole_keyword() {
+        // Like "HIERARCH ESO PRO CATG": the namespace is already spelled out, so --ns is not added.
+        assert_eq!(KeySpec::new("HIERARCH.ESO.PRO.CATG", "ESO").candidates(), ["ESO PRO CATG", "ESO.PRO.CATG"]);
+        assert_eq!(KeySpec::new("hierarch.tng.drs.bjd", "ESO").candidates(), ["TNG DRS BJD", "TNG.DRS.BJD"]);
+        assert_eq!(KeySpec::new("HIERARCH.EXPTIME", "ESO").candidates(), ["EXPTIME"]);
+        // Nothing after the prefix: kept as a plain dot spec.
+        assert_eq!(KeySpec::new("HIERARCH.", "ESO").candidates(), ["ESO HIERARCH", "HIERARCH", "HIERARCH."]);
+    }
+
+    #[test]
     fn resolution_order() {
         let hd = Header::parse(header(&[
             "HIERARCH ASTRO METADATA FIX DATE = '2026-01-01'",
@@ -86,6 +101,8 @@ mod tests {
         assert_eq!(v("scaling.fiberPitch", "ESO"), Some(Value::Real("1.5".into())));
         assert_eq!(v("DRS.BJD", "TNG"), Some(Value::Real("2459000.5".into())));
         assert_eq!(v("HIERARCH TNG DRS BJD", "ESO"), Some(Value::Real("2459000.5".into())));
+        assert_eq!(v("HIERARCH.ESO.DPR.CATG", "ESO"), Some(Value::Str(b"SCIENCE".to_vec())));
+        assert_eq!(v("HIERARCH.ASTRO.METADATA.FIX.DATE", "ESO"), Some(Value::Str(b"2026-01-01".to_vec())));
         assert_eq!(v("NOPE.KEY", "ESO"), None);
     }
 }
