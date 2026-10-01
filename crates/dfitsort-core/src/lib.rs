@@ -2,7 +2,9 @@
 
 pub mod card;
 pub mod error;
+pub mod hdu;
 pub mod numeric;
+pub mod size;
 pub mod source;
 #[doc(hidden)]
 pub mod testkit;
