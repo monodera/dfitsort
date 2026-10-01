@@ -1,0 +1,91 @@
+//! User keyword specs and their resolution against a header (spec §6.4).
+
+use crate::card::normalize_name;
+use crate::header::Header;
+use crate::value::Value;
+
+/// A keyword as the user typed it, with the normalised names to try in order.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KeySpec {
+    label: String,
+    candidates: Vec<String>,
+}
+
+impl KeySpec {
+    /// `ns` is the HIERARCH namespace for dot specs (`"ESO"`, or `""` for none).
+    pub fn new(spec: &str, ns: &str) -> KeySpec {
+        let mut norm = normalize_name(spec);
+        if let Some(rest) = norm.strip_prefix("HIERARCH ") {
+            norm = rest.to_string();
+        }
+        let mut candidates = Vec::new();
+        if !norm.contains(' ') && norm.contains('.') {
+            let joined = norm.split('.').filter(|t| !t.is_empty()).collect::<Vec<_>>().join(" ");
+            if !joined.is_empty() {
+                let ns = normalize_name(ns);
+                if !ns.is_empty() {
+                    candidates.push(format!("{ns} {joined}"));
+                }
+                candidates.push(joined);
+            }
+        }
+        if !candidates.contains(&norm) {
+            candidates.push(norm);
+        }
+        KeySpec { label: spec.to_string(), candidates }
+    }
+
+    /// The spec exactly as given (used as column heading).
+    pub fn label(&self) -> &str {
+        &self.label
+    }
+
+    pub fn candidates(&self) -> &[String] {
+        &self.candidates
+    }
+
+    /// Position (for `Header::value_at`) of the first candidate present in `header`.
+    pub fn resolve(&self, header: &Header) -> Option<usize> {
+        self.candidates.iter().find_map(|c| header.find(c))
+    }
+
+    pub fn value(&self, header: &Header) -> Option<Value> {
+        self.resolve(header).map(|pos| header.value_at(pos))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testkit::header;
+
+    #[test]
+    fn candidates() {
+        assert_eq!(KeySpec::new("dpr.catg", "ESO").candidates(), ["ESO DPR CATG", "DPR CATG", "DPR.CATG"]);
+        assert_eq!(
+            KeySpec::new("ASTRO.METADATA.FIX.DATE", "").candidates(),
+            ["ASTRO METADATA FIX DATE", "ASTRO.METADATA.FIX.DATE"]
+        );
+        assert_eq!(KeySpec::new("hierarch eso  det dit", "ESO").candidates(), ["ESO DET DIT"]);
+        assert_eq!(KeySpec::new("DATA-TYP", "ESO").candidates(), ["DATA-TYP"]);
+        assert_eq!(KeySpec::new("DET.DIT", "tng").candidates()[0], "TNG DET DIT");
+        assert_eq!(KeySpec::new("dpr.catg", "ESO").label(), "dpr.catg");
+    }
+
+    #[test]
+    fn resolution_order() {
+        let hd = Header::parse(header(&[
+            "HIERARCH ASTRO METADATA FIX DATE = '2026-01-01'",
+            "HIERARCH scaling.fiberPitch = 1.5",
+            "HIERARCH ESO DPR CATG = 'SCIENCE'",
+            "HIERARCH TNG DRS BJD = 2459000.5",
+        ]));
+        let v = |spec: &str, ns: &str| KeySpec::new(spec, ns).value(&hd);
+        assert_eq!(v("DPR.CATG", "ESO"), Some(Value::Str(b"SCIENCE".to_vec())));
+        assert_eq!(v("ASTRO.METADATA.FIX.DATE", "ESO"), Some(Value::Str(b"2026-01-01".to_vec())));
+        assert_eq!(v("scaling.fiberPitch", "ESO"), Some(Value::Real("1.5".into())));
+        assert_eq!(v("DRS.BJD", "TNG"), Some(Value::Real("2459000.5".into())));
+        assert_eq!(v("HIERARCH TNG DRS BJD", "ESO"), Some(Value::Real("2459000.5".into())));
+        assert_eq!(v("NOPE.KEY", "ESO"), None);
+    }
+}
