@@ -2,9 +2,11 @@
 
 pub mod card;
 pub mod error;
+pub mod numeric;
 pub mod source;
 #[doc(hidden)]
 pub mod testkit;
+pub mod value;
 
 pub use error::{Error, Result};
 pub use source::Source;
