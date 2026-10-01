@@ -5,18 +5,21 @@ ESO's beloved `dfits` and `fitsort`, written in Rust.
 
 ```console
 $ dfitsort table -k DPR.CATG,DPR.TYPE,EXPTIME -w DPR.CATG=SCIENCE *.fits
-FILE        DPR.CATG  DPR.TYPE  EXPTIME
-f001.fits   SCIENCE   OBJECT    300.0
-f007.fits   SCIENCE   STD       10.0
+FILE       DPR.CATG  DPR.TYPE  EXPTIME
+f001.fits  SCIENCE   OBJECT    300.0
+f007.fits  SCIENCE   STD       10.0
 ```
+
+Columns are padded to the widest cell plus a two-space gutter.
 
 - Reads only headers and seeks over data, in parallel: a 5-keyword table of
   10,000 files takes about 45 ms, versus 700 ms for `dfits | fitsort` and 8 s for
   dfitspy (on a 16-thread laptop with NVMe).
 - Follows FITS Standard 4.0 and the HIERARCH, CONTINUE and tiled-compression
   conventions, while tolerating the non-conforming headers found in real archives.
-- Invoked as `dfits` or `fitsort`, it reproduces the original ESO tools byte for byte,
-  so existing scripts keep working.
+- Invoked as `dfits` or `fitsort`, it reproduces the original ESO tools byte for byte
+  on standard-conforming files, so existing scripts keep working (known differences
+  are listed under "Legacy mode").
 
 ## Install
 
@@ -54,13 +57,13 @@ dfitsort table -k OBJECT,EXPTIME -f json *.fits            # also tsv, csv
 | `-x SEL` | HDUs: omitted = primary, `0` = all, `N`, `N-M`, `EXTNAME`, `EXTNAME,EXTVER` |
 | `-k KEYS` | keywords, comma-separated, repeatable |
 | `-w COND` | keep rows where `KEY OP VALUE` holds; OP is `= != < <= > >= ~` (substring); numbers compare numerically; repeatable (AND, or OR with `--or`) |
-| `-s KEY[:desc]` | sort, repeatable; missing values last |
+| `-s KEY[:desc]` | sort, repeatable; in a mixed column numbers sort before text; missing values last |
 | `-f FORMAT` | `text` (default), `tsv`, `csv`, `json` |
 | `-d` | no header row |
 | `--missing STR` | placeholder for missing keywords |
 | `--ns NS` | HIERARCH namespace for dot keywords (default `ESO`, env `DFITSORT_NS`) |
 | `--compressed` | show tile-compressed HDUs as stored instead of the image header |
-| `-j N` | worker threads |
+| `-j N` | worker threads (0 = all cores, the default) |
 
 ### Keyword names
 
@@ -83,7 +86,16 @@ keyword appears twice, the first occurrence wins.
 For tile-compressed images (`.fz`, and the compressed HDUs inside PFS raw
 files), `dump` and `table` use the header of the original image, rebuilt from
 the `Z*` keywords as astropy and CFITSIO do. `--compressed` shows the stored
-binary-table header instead. gzip files (`.fits.gz`) are read transparently.
+binary-table header instead. gzip files (`.fits.gz`) are read transparently; since
+data cannot be skipped in a compressed stream, reading them means decompressing the
+data units too, which is slower than seeking in plain files.
+
+### Unusable data sizes
+
+A header whose data size cannot be computed (for example a non-numeric `NAXIS`) is
+still shown, and then reported as an error, which ends the dump of that file. The
+exit status can therefore depend on how far reading goes: `-x 1` stops at HDU 1 and
+never looks at what follows, while `-x NAME` has to read on until it has seen every HDU.
 
 ### Legacy mode
 
@@ -94,6 +106,21 @@ duplicate keywords). Internally the files are still read in parallel, data units
 are skipped instead of scanned (so bytes inside an image can no longer be
 mistaken for an extension header), gzip input works, and the C limits on line
 length and number of keywords are gone.
+
+Byte identity holds for standard-conforming files. Known differences:
+
+- Errors that the C tools handle silently get a message on stderr.
+- A header cut off before `END` prints nothing (C prints the partial header).
+- Bytes after the last HDU are ignored (C `dfits -x 0` on such a file exits 1, dfitsort 0).
+- An unusable data size in an extension stops the dump with an error (C scans on).
+
+### Exit status
+
+| Mode | Status |
+|---|---|
+| modern | 0 = all files processed, 1 = some file failed (the others are still processed), 2 = usage error; a closed stdout (e.g. `\| head`) exits 0 |
+| legacy `dfits` | number of failed files |
+| legacy `fitsort` | 255 when there is no record |
 
 ## Development
 
