@@ -3,6 +3,7 @@
 pub mod card;
 pub mod compressed;
 pub mod error;
+pub mod filter;
 pub mod hdu;
 pub mod header;
 pub mod numeric;
