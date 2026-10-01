@@ -129,6 +129,21 @@ def main() -> None:
     cards = simple(8, [], [kv(f"KEY{k}", k) for k in range(40)])
     (HERE / "truncated.fits").write_bytes(b"".join(card(c) for c in cards)[:BLOCK])
 
+    naxis0ext = header(simple(8, [], [kv("EXTEND", "T")]))
+    naxis0ext += header(
+        [
+            "XTENSION= 'BINTABLE'           / NAXIS = 0: no data despite PCOUNT",
+            kv("BITPIX", 8),
+            kv("NAXIS", 0),
+            kv("PCOUNT", 3000),
+            kv("GCOUNT", 1),
+            kv("TFIELDS", 0),
+            "EXTNAME = 'WEIRD   '",
+        ]
+    )
+    naxis0ext += image_ext("AFTER", 16, [10, 10])
+    (HERE / "naxis0ext.fits").write_bytes(naxis0ext)
+
     (HERE / "notfits.txt").write_bytes(b"This is not a FITS file.\n" * 10)
     (HERE / "empty.fits").write_bytes(b"")
 

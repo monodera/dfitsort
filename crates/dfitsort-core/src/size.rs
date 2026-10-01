@@ -48,8 +48,8 @@ pub fn data_unit_size(raw: &[u8], hdu: usize) -> Result<u64> {
         }
     }
     let naxis = naxis.unwrap_or(0);
-    // Eq. 1 (primary) has no PCOUNT term; a PCOUNT heap with NAXIS = 0 exists only in conforming extensions.
-    if naxis == 0 && (pcount <= 0 || !raw.starts_with(b"XTENSION")) {
+    // NAXIS = 0: no data follow the header, whatever PCOUNT says (Standard §4.4.1.1).
+    if naxis == 0 {
         return Ok(0);
     }
     if !(0..=999).contains(&naxis) {
@@ -72,9 +72,8 @@ pub fn data_unit_size(raw: &[u8], hdu: usize) -> Result<u64> {
     }
     let overflow = || bad("size does not fit in 64 bits".into());
     // Random groups (Eq. 4): NAXIS1 = 0 is not part of the product.
-    // With NAXIS = 0 there is no array, only the PCOUNT bytes (Eq. 2).
     let counted = if groups && dims.first() == Some(&0) { &dims[1..] } else { &dims[..] };
-    let mut product: u64 = if dims.is_empty() { 0 } else { 1 };
+    let mut product: u64 = 1;
     for &d in counted {
         product = product.checked_mul(d).ok_or_else(overflow)?;
     }
@@ -202,20 +201,15 @@ mod tests {
     }
 
     #[test]
-    fn naxis_zero_with_pcount() {
-        let with_heap = [
+    fn naxis_zero_means_no_data() {
+        let with_pcount = [
             "XTENSION= 'BINTABLE'",
-            "BITPIX  =                    8",
             "NAXIS   =                    0",
             "PCOUNT  =                 3000",
             "GCOUNT  =                    1",
         ];
-        assert_eq!(size(&with_heap).unwrap(), 5760);
+        assert_eq!(size(&with_pcount).unwrap(), 0);
         assert_eq!(size(&["BITPIX  =                    8", "NAXIS   =                    0"]).unwrap(), 0);
-        assert!(matches!(
-            size(&["XTENSION= 'BINTABLE'", "NAXIS   =                    0", "PCOUNT  =                   10"]),
-            Err(Error::BadSize { .. })
-        ));
     }
 
     #[test]
