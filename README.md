@@ -134,6 +134,42 @@ scripts/bench.sh /some/scratch/dir [/path/to/eso/c/sources]       # benchmarks
 Test fixtures are regenerated with `tests/fixtures/gen.py` (astropy) and
 `tests/fixtures/gen_raw.py` (byte-exact cards); see their headers.
 
+## Acknowledgements
+
+dfitsort exists because of `dfits` and `fitsort`, written by Nicolas Devillard at
+the European Southern Observatory between 1996 and 2001 as part of
+[eclipse](https://github.com/ndevilla/eclipse) (ESO C Library for an Image
+Processing Environment, later transformed by ESO into the Common Pipeline Library).
+For a quarter of a century, `dfits *.fits | fitsort ...` has been how many
+astronomers look at their data. dfitsort's legacy mode reimplements their
+behaviour, and their output is the reference for its golden tests. Thank you,
+Nicolas.
+
+The C sources used as that reference are the copies preserved by Grant Tremblay in
+[eso_fits_tools](https://github.com/granttremblay/eso_fits_tools), after the tools
+disappeared from ESO's website. They are distributed under ESO's BSD-style
+license, reproduced in NOTICE.
+
+Other software and documents that shaped dfitsort:
+
+| Project | How it was used |
+|---|---|
+| [dfitspy](https://github.com/Romain-Thomas-Shef/dfitspy) by Romain Thomas ([JOSS paper](https://doi.org/10.21105/joss.01249)) | Python take on dfits/fitsort; its `--grep` informed `-w`; benchmark baseline. No code used (GPLv3). |
+| [astropy](https://www.astropy.org/) | Reference for header parsing in the oracle tests and for generating fixtures; [`fitsheader -f`](https://docs.astropy.org/en/stable/io/fits/usage/scripts.html) inspired the table formats. |
+| [CFITSIO](https://heasarc.gsfc.nasa.gov/fitsio/) | Behaviour aligned with for HIERARCH names, duplicate keywords and rebuilding tile-compressed image headers; benchmarked during design. |
+| qfits `dfits` (in eclipse) | Benchmark baseline; showed that seeking over data units is the fast path. |
+| [WCSTools](http://tdc-www.harvard.edu/wcstools/) `gethead` | Inspired the conditions and the missing-value placeholder. |
+| [FITS Standard 4.0](https://fits.gsfc.nasa.gov/fits_standard.html), the [HIERARCH convention](https://fits.gsfc.nasa.gov/registry/hierarch_keyword.html), the [ESO Data Interface Control Document](https://archive.eso.org/cms/tools-documentation/dicb/ESO-044156_8_Data_Interface_Control_Document.pdf) and the [Subaru FITS rules](https://subarutelescope.org/DATA/fits/header/regulation.html) | Rules for structure, keyword names and values. |
+
+Related Rust projects: [dfits-rs](https://github.com/TrystanScottLambert/dfits-rs)
+and [fitsort-rs](https://github.com/TrystanScottLambert/fitsort-rs) by Trystan
+Scott Lambert are independent rewrites of the two tools. dfitsort shares no code
+with them, and is named differently so the projects are not confused.
+
+dfitsort was developed with [Claude Code](https://claude.com/claude-code),
+Anthropic's agentic coding tool: the design, implementation, tests and reviews
+were carried out by Claude Code under the maintainer's direction.
+
 ## License
 
 MIT OR Apache-2.0. See NOTICE for the credit to the original ESO tools.
