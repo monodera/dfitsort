@@ -146,6 +146,18 @@ fn an_interrupt_while_paging_leaves_the_pager_in_charge() {
 }
 
 #[test]
+fn the_pager_keeps_its_own_interrupt_handling() {
+    // The pager's shell interrupts itself: with SIGINT at its default it dies before the
+    // echo; had it inherited dfitsort's SIG_IGN, it would carry on.
+    let dir = tempfile::tempdir().unwrap();
+    let survived = dir.path().join("survived");
+    let pager = format!("kill -INT $$; echo > {}", quote(&survived));
+    let (code, _) = on_terminal(&format!("{} dump -p -x 0 mef.fits", bin()), &pager);
+    assert_eq!(code, Some(0));
+    assert!(!survived.exists());
+}
+
+#[test]
 fn legacy_tools_page_with_a_leading_p() {
     let legacy = legacy_bin();
     let dfits = quote(&legacy.path().join("dfits"));
