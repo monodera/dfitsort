@@ -115,6 +115,28 @@ fn an_empty_or_cat_pager_writes_directly() {
 }
 
 #[test]
+fn a_missing_pager_command_falls_back_to_stdout() {
+    let expected = stdout(&run(&["dump", "eso1.fits"]));
+    for cmd in [
+        format!("{} dump -p eso1.fits", bin()),
+        // PAGER unset and no less on PATH.
+        format!("env -u PAGER PATH=/nonexistent {} dump -p eso1.fits", bin()),
+    ] {
+        let (code, screen) = on_terminal(&cmd, "no-such-pager");
+        assert_eq!(code, Some(0), "{cmd}");
+        assert!(screen.starts_with("dfitsort: cannot run pager "), "{cmd}: {screen}");
+        assert!(screen.ends_with(&expected), "{cmd}: {screen}");
+    }
+}
+
+#[test]
+fn a_shell_pager_that_cannot_run_is_reported() {
+    let (code, screen) = on_terminal(&format!("{} dump -p eso1.fits", bin()), "no-such-pager -S");
+    assert_eq!(code, Some(1));
+    assert!(screen.contains("dfitsort: cannot run pager no-such-pager -S"), "{screen}");
+}
+
+#[test]
 fn an_interrupt_while_paging_leaves_the_pager_in_charge() {
     let dir = tempfile::tempdir().unwrap();
     let pager = format!("kill -INT $PPID; sleep 0.2; {}", saving_pager(dir.path()));

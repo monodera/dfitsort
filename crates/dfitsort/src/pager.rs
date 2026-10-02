@@ -6,26 +6,34 @@ use std::process::{Child, Command, Stdio};
 
 use crate::run;
 
-/// The running pager, if any, with the SIGINT disposition to restore when it has exited,
-/// and the error messages held back while it owns the terminal.
+/// The running pager, if any, and the error messages held back while it owns the terminal.
 pub struct Pager {
-    child: Option<(Child, sigint::Saved)>,
+    running: Option<Running>,
     held: Vec<String>,
+}
+
+struct Running {
+    child: Child,
+    /// `$PAGER` as given, for messages.
+    name: String,
+    via_shell: bool,
+    /// SIGINT disposition to restore when the pager has exited.
+    old_sigint: sigint::Saved,
 }
 
 /// Starts the pager when `page` is set and stdout is a terminal; returns the stream to
 /// write the output to, which goes to stdout otherwise.
 pub fn start(page: bool) -> (Box<dyn Write>, Pager) {
-    let child = page.then(command).flatten().and_then(spawn);
-    let mut pager = Pager { child, held: Vec::new() };
-    match pager.child.as_mut().and_then(|(c, _)| c.stdin.take()) {
+    let running = page.then(command).flatten().and_then(|(command, name)| spawn(command, name));
+    let mut pager = Pager { running, held: Vec::new() };
+    match pager.running.as_mut().and_then(|r| r.child.stdin.take()) {
         Some(stdin) => (Box::new(BufWriter::with_capacity(1 << 16, stdin)), pager),
         None => (Box::new(BufWriter::with_capacity(1 << 16, io::stdout().lock())), pager),
     }
 }
 
-/// The pager command, or `None` when there is to be no pager.
-fn command() -> Option<Command> {
+/// The pager command and `$PAGER`, or `None` when there is to be no pager.
+fn command() -> Option<(Command, OsString)> {
     if cfg!(not(unix)) || !io::stdout().is_terminal() {
         return None;
     }
@@ -33,24 +41,36 @@ fn command() -> Option<Command> {
     if matches!(cmd.to_str().map(str::trim), Some("" | "cat")) {
         return None;
     }
-    let mut command = Command::new("sh");
-    command.arg("-c").arg(cmd).stdin(Stdio::piped());
+    let mut command = if is_plain(&cmd) {
+        Command::new(&cmd)
+    } else {
+        let mut sh = Command::new("sh");
+        sh.arg("-c").arg(&cmd);
+        sh
+    };
+    command.stdin(Stdio::piped());
     if std::env::var_os("LESS").is_none() {
         // Quit if one screen, pass colours through, keep the text on screen after quitting.
         command.env("LESS", "FRX");
     }
-    Some(command)
+    Some((command, cmd))
 }
 
-/// Spawns the pager; returns it and the SIGINT disposition to restore when it has exited.
-fn spawn(mut command: Command) -> Option<(Child, sigint::Saved)> {
-    let old = sigint::ignore(&mut command);
+/// As in git: a plain command name is run directly, not through sh, so that a missing
+/// one fails to spawn (and the output goes to stdout) instead of failing inside sh.
+fn is_plain(cmd: &OsStr) -> bool {
+    cmd.to_str().is_some_and(|c| !c.contains(|ch| "|&;<>()$`\\\"' \t\n*?[#~=%".contains(ch)))
+}
+
+fn spawn(mut command: Command, name: OsString) -> Option<Running> {
+    let via_shell = !is_plain(&name);
+    let name = name.to_string_lossy().into_owned();
+    let old_sigint = sigint::ignore(&mut command);
     match command.spawn() {
-        Ok(child) => Some((child, old)),
+        Ok(child) => Some(Running { child, name, via_shell, old_sigint }),
         Err(e) => {
-            sigint::restore(old);
-            let cmd = command.get_args().nth(1).unwrap_or_default().to_string_lossy();
-            eprintln!("dfitsort: cannot run pager {cmd}: {e}");
+            sigint::restore(old_sigint);
+            eprintln!("dfitsort: cannot run pager {name}: {e}");
             None
         }
     }
@@ -102,7 +122,7 @@ mod sigint {
 impl Pager {
     /// Prints `text` to stderr, or holds it until the pager has exited.
     pub fn eprint(&mut self, text: String) {
-        if self.child.is_some() {
+        if self.running.is_some() {
             self.held.push(text);
         } else {
             eprint!("{text}");
@@ -110,15 +130,23 @@ impl Pager {
     }
 
     /// Closes `out`, waits for the pager, prints the held messages and returns the exit
-    /// status as [`run::finish`] does.
+    /// status as [`run::finish`] does, but at least 1 when sh could not run the pager
+    /// (the output is then lost).
     pub fn finish(self, out: Box<dyn Write>, result: io::Result<()>, code: i32) -> i32 {
         drop(out);
-        if let Some((mut child, old_sigint)) = self.child {
-            let _ = child.wait();
-            sigint::restore(old_sigint);
+        let mut lost = false;
+        if let Some(mut running) = self.running {
+            let status = running.child.wait();
+            sigint::restore(running.old_sigint);
+            // sh exits 127 when the command is not found, 126 when it cannot be executed.
+            if running.via_shell && status.is_ok_and(|s| matches!(s.code(), Some(126 | 127))) {
+                eprintln!("dfitsort: cannot run pager {}", running.name);
+                lost = true;
+            }
         }
         self.held.iter().for_each(|text| eprint!("{text}"));
-        run::finish(result, code)
+        let status = run::finish(result, code);
+        if lost { status.max(1) } else { status }
     }
 }
 
