@@ -3,6 +3,7 @@ mod dump;
 mod legacy_dfits;
 mod legacy_fitsort;
 mod output;
+mod pager;
 mod paths;
 mod run;
 mod table;

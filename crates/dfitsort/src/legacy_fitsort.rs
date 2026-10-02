@@ -5,16 +5,17 @@ use std::io::{self, Write};
 
 use dfitsort_core::legacy::{fitsort_key, fitsort_read, fitsort_write};
 
+use crate::pager;
 use crate::paths::os_bytes;
-use crate::run;
 
-/// `args` includes argv[0]. Returns 0, or 255 when the input held no dfits output.
+/// `args` includes argv[0]; a first argument `-p` (not in fitsort.c) pages the output.
+/// Returns 0, or 255 when the input held no dfits output.
 pub fn main(args: &[OsString]) -> i32 {
-    let stdout = io::stdout();
-    let mut out = io::BufWriter::with_capacity(1 << 16, stdout.lock());
+    let (page, args) = pager::leading_p(args);
+    let (mut out, pager) = pager::start(page);
     let mut code = 0;
-    let result = fitsort(args, &mut out, &mut code).and_then(|()| out.flush());
-    run::finish(result, code)
+    let result = fitsort(&args, &mut out, &mut code).and_then(|()| out.flush());
+    pager.finish(out, result, code)
 }
 
 fn fitsort(args: &[OsString], out: &mut impl Write, code: &mut i32) -> io::Result<()> {

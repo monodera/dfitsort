@@ -59,6 +59,7 @@ dfitsort dump file.fits                  # primary header, dfits layout
 dfitsort dump -x 0 file.fits             # primary and all extensions
 dfitsort dump -x SCI,2 file.fits         # EXTNAME = SCI, EXTVER = 2
 dfitsort dump - < file.fits.gz           # stdin, gzip is detected
+dfitsort dump -p -x 0 *.fits             # page through $PAGER (default less)
 
 dfitsort table -k OBJECT,EXPTIME *.fits                    # aligned text
 dfitsort table -k DPR.CATG -k "HIERARCH TNG DRS BJD" *.fits
@@ -80,6 +81,7 @@ dfitsort table -k OBJECT,EXPTIME -f json *.fits            # also tsv, csv
 | `--ns NS` | HIERARCH namespace for dot keywords (default `ESO`, env `DFITSORT_NS`) |
 | `--compressed` | show tile-compressed HDUs as stored instead of the image header |
 | `-j N` | worker threads (0 = all cores, the default) |
+| `-p`, `--pager` | show the output in `$PAGER` (default `less`, run with `LESS=FRX` unless `LESS` is set) when stdout is a terminal; per-file errors are printed after the pager exits (Unix only) |
 
 ### Keyword names
 
@@ -132,6 +134,7 @@ Byte identity holds for standard-conforming files. Known differences:
 - A header cut before `END`: the cards read so far are printed, a message goes to stderr and the exit status is 1 (C prints the same cards; it exits 1 for a cut primary but 0 for a cut extension).
 - Bytes after the last HDU are ignored (C `dfits -x 0` on such a file exits 1, dfitsort 0).
 - An unusable data size stops `-x 0` with an error, for any HDU (C scans on).
+- `-p` as the first argument (`dfits -p ...`, `fitsort -p [-d] ...`) pages the output as `--pager` does; C dfits takes it as a file name and C fitsort as the keyword `-P`. Anywhere else, `-p` keeps its C meaning.
 
 ### Exit status
 

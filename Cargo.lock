@@ -156,6 +156,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "dfitsort-core",
+ "libc",
  "rayon",
  "serde_json",
  "tempfile",
