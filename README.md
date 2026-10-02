@@ -81,7 +81,7 @@ dfitsort table -k OBJECT,EXPTIME -f json *.fits            # also tsv, csv
 | `--ns NS` | HIERARCH namespace for dot keywords (default `ESO`, env `DFITSORT_NS`) |
 | `--compressed` | show tile-compressed HDUs as stored instead of the image header |
 | `-j N` | worker threads (0 = all cores, the default) |
-| `-p`, `--pager` | show the output in `$PAGER` (default `less`, run with `LESS=FRX` unless `LESS` is set) when stdout is a terminal; per-file errors are printed after the pager exits |
+| `-p`, `--pager` | show the output in `$PAGER` (default `less`, run with `LESS=FRX` unless `LESS` is set) when stdout is a terminal; per-file errors are printed after the pager exits (Unix only) |
 
 ### Keyword names
 
