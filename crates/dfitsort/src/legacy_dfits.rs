@@ -8,19 +8,21 @@ use dfitsort_core::card::trim_end;
 use dfitsort_core::hdu::HduReader;
 use dfitsort_core::{Error, Source};
 
+use crate::pager::{self, Pager};
 use crate::paths::os_bytes;
 use crate::run::{self, TEXT_CAPACITY};
 
-/// `args` includes argv[0]. Returns the exit status: the number of failed files.
+/// `args` includes argv[0]; a first argument `-p` (not in dfits.c) pages the output.
+/// Returns the exit status: the number of failed files.
 pub fn main(args: &[OsString]) -> i32 {
-    let stdout = io::stdout();
-    let mut out = io::BufWriter::with_capacity(1 << 16, stdout.lock());
+    let (page, args) = pager::leading_p(args);
+    let (mut out, mut pager) = pager::start(page);
     let mut code = 0;
-    let result = dfits(args, &mut out, &mut code).and_then(|()| out.flush());
-    run::finish(result, code)
+    let result = dfits(&args, &mut out, &mut pager, &mut code).and_then(|()| out.flush());
+    pager.finish(out, result, code)
 }
 
-fn dfits(args: &[OsString], out: &mut impl Write, code: &mut i32) -> io::Result<()> {
+fn dfits(args: &[OsString], out: &mut impl Write, pager: &mut Pager, code: &mut i32) -> io::Result<()> {
     let pname = args.first().map_or_else(|| b"dfits".to_vec(), |a| os_bytes(a).into_owned());
     if args.len() < 2 {
         *code = 1;
@@ -40,7 +42,7 @@ fn dfits(args: &[OsString], out: &mut impl Write, code: &mut i32) -> io::Result<
         out.write_all(&text)?;
         if let Some(m) = message {
             out.flush()?;
-            eprint!("{m}");
+            pager.eprint(m);
         }
         *code = rc;
         return Ok(());
@@ -54,7 +56,7 @@ fn dfits(args: &[OsString], out: &mut impl Write, code: &mut i32) -> io::Result<
             out.write_all(&text)?;
             if let Some(m) = message {
                 out.flush()?;
-                eprint!("{m}");
+                pager.eprint(m);
             }
             *code += rc;
             Ok(())

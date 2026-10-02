@@ -14,6 +14,7 @@ use dfitsort_core::value::Value;
 use crate::cli::TableArgs;
 use crate::dump::parse_selector;
 use crate::output;
+use crate::pager;
 use crate::paths::{open, os_bytes};
 use crate::run;
 
@@ -81,14 +82,8 @@ pub fn run(args: TableArgs) -> i32 {
     };
     run::init_threads(args.jobs);
     let labels: Vec<&str> = query.keys.iter().map(KeySpec::label).collect();
-    let stdout = io::stdout();
-    let mut writer = output::writer(
-        args.format,
-        io::BufWriter::with_capacity(1 << 16, stdout.lock()),
-        &labels,
-        !args.no_header,
-        &args.missing,
-    );
+    let (mut out, mut pager) = pager::start(args.pager);
+    let mut writer = output::writer(args.format, &mut out, &labels, !args.no_header, &args.missing);
     let mut failed = false;
     let mut held: Vec<Row> = Vec::new();
     let mut emit = || -> io::Result<()> {
@@ -100,7 +95,7 @@ pub fn run(args: TableArgs) -> i32 {
                 if let Some(msg) = error {
                     writer.flush()?; // keep stderr after the stdout rows of the same file on a terminal
                     failed = true;
-                    eprintln!("dfitsort: {}: {msg}", path.display());
+                    pager.eprint(format!("dfitsort: {}: {msg}\n", path.display()));
                 }
                 if query.sort.is_empty() {
                     rows.iter().try_for_each(|r| writer.row(r))
@@ -115,7 +110,8 @@ pub fn run(args: TableArgs) -> i32 {
         writer.finish()
     };
     let result = emit();
-    run::finish(result, i32::from(failed))
+    drop(writer);
+    pager.finish(out, result, i32::from(failed))
 }
 
 fn rows_for(path: &Path, q: &Query) -> (Vec<Row>, Option<String>) {

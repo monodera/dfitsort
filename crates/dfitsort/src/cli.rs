@@ -38,6 +38,9 @@ pub struct DumpArgs {
     /// Number of worker threads (0 = all cores) [default: all cores]
     #[arg(short = 'j', long = "jobs", value_name = "N")]
     pub jobs: Option<usize>,
+    /// Show the output in $PAGER (default less) when stdout is a terminal
+    #[arg(short = 'p', long = "pager")]
+    pub pager: bool,
     /// FITS files; `-` reads one FITS stream from stdin
     #[arg(required = true, value_name = "FILES")]
     pub files: Vec<PathBuf>,
@@ -78,6 +81,9 @@ pub struct TableArgs {
     /// Number of worker threads (0 = all cores) [default: all cores]
     #[arg(short = 'j', long = "jobs", value_name = "N")]
     pub jobs: Option<usize>,
+    /// Show the output in $PAGER (default less) when stdout is a terminal
+    #[arg(short = 'p', long = "pager")]
+    pub pager: bool,
     /// FITS files; `-` reads one FITS stream from stdin
     #[arg(required = true, value_name = "FILES")]
     pub files: Vec<PathBuf>,

@@ -1,12 +1,13 @@
 //! `dfitsort dump`: header cards of the selected HDUs, in dfits layout.
 
-use std::io::{self, Write};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use dfitsort_core::card::trim_end;
 use dfitsort_core::select::{FileHdus, HduSelector, read_selected};
 
 use crate::cli::DumpArgs;
+use crate::pager;
 use crate::paths::{is_stdin, open, os_bytes};
 use crate::run::{self, TEXT_CAPACITY};
 
@@ -18,8 +19,7 @@ pub fn run(args: DumpArgs) -> i32 {
     run::init_threads(args.jobs);
     let logical = !args.compressed;
     let mut failed = false;
-    let stdout = io::stdout();
-    let mut out = io::BufWriter::with_capacity(1 << 16, stdout.lock());
+    let (mut out, mut pager) = pager::start(args.pager);
     let result = run::ordered(
         &args.files,
         run::LARGE_RESULTS,
@@ -29,13 +29,13 @@ pub fn run(args: DumpArgs) -> i32 {
             if let Some(msg) = error {
                 out.flush()?; // keep stderr after the stdout text of the same file on a terminal
                 failed = true;
-                eprintln!("dfitsort: {}: {msg}", path.display());
+                pager.eprint(format!("dfitsort: {}: {msg}\n", path.display()));
             }
             Ok(())
         },
     )
     .and_then(|()| out.flush());
-    run::finish(result, i32::from(failed))
+    pager.finish(out, result, i32::from(failed))
 }
 
 /// Parses `-x`; on error prints a message and returns exit status 2.
