@@ -1,7 +1,12 @@
 # dfitsort
 
-Fast FITS header listing and keyword tables for the command line: a successor of
-ESO's beloved `dfits` and `fitsort`, written in Rust.
+A small command-line tool, written in Rust, for listing FITS headers and putting
+keywords into tables. It is a personal hobby project: I wanted a faster
+`dfits | fitsort` for my own data, and for now I am its main user. If you find it
+useful too, you are very welcome to use it.
+
+The idea and much of the behaviour come from `dfits` and `fitsort` by Nicolas
+Devillard at ESO (see [Acknowledgements](#acknowledgements)).
 
 ```console
 $ dfitsort table -k DPR.CATG,DPR.TYPE,EXPTIME -w DPR.CATG=SCIENCE *.fits
@@ -12,24 +17,35 @@ f007.fits  SCIENCE   STD       10.0
 
 Columns are padded to the widest cell plus a two-space gutter.
 
-- Reads only headers and seeks over data, in parallel: a 5-keyword table of
-  10,000 files takes about 45 ms, versus 700 ms for `dfits | fitsort` and 8 s for
-  dfitspy (on a 16-thread laptop with NVMe).
-- Follows FITS Standard 4.0 and the HIERARCH, CONTINUE and tiled-compression
-  conventions, while tolerating the non-conforming headers found in real archives.
-- Invoked as `dfits` or `fitsort`, it reproduces the original ESO tools byte for byte
-  on standard-conforming files, so existing scripts keep working (known differences
-  are listed under "Legacy mode").
+- It reads only the headers and skips over the data, several files at a time. In
+  my tests a 5-keyword table of 10,000 small files took about 45 ms, against
+  700 ms for `dfits | fitsort` (synthetic files on a 16-thread laptop with NVMe).
+- It tries to follow FITS Standard 4.0 and the HIERARCH, CONTINUE and
+  tiled-compression conventions, while accepting the non-conforming headers found
+  in real archives.
+- Invoked as `dfits` or `fitsort`, it aims to print exactly what the original ESO
+  tools print on standard-conforming files, so existing scripts keep working (known
+  differences are listed under "Legacy mode").
+- I have checked it against astropy and the original C tools on the real data I had
+  at hand (Subaru Suprime-Cam and PFS raw frames, ESO MUSE products, HSC pipeline
+  coadds: 639 files, 2,368 HDUs) and found no differences. Data from other
+  instruments may well contain cases I have not seen.
+
+## Status and support
+
+This is a personal project that I maintain in my spare time, mainly for my own use.
+Bug reports and suggestions are welcome as GitHub issues, and small fixes as pull
+requests, but I may be slow to reply and cannot promise fixes or new features.
 
 ## Install
 
 ```sh
-cargo install dfitsort
+cargo install --git https://github.com/monodera/dfitsort dfitsort
 ```
 
-or download a binary from the GitHub releases page. Release archives contain
-`dfits` and `fitsort` symlinks. With `cargo install`, create them yourself if you
-want the legacy commands:
+There is no crates.io package or prebuilt binary yet; I plan to publish it on
+crates.io later. To get the legacy commands,
+create the symlinks yourself:
 
 ```sh
 ln -s "$(which dfitsort)" ~/.local/bin/dfits
@@ -175,7 +191,7 @@ with them, and is named differently so the projects are not confused.
 
 dfitsort was developed with [Claude Code](https://claude.com/claude-code),
 Anthropic's agentic coding tool: the design, implementation, tests and reviews
-were carried out by Claude Code under the maintainer's direction.
+were carried out by Claude Code under my direction.
 
 ## License
 

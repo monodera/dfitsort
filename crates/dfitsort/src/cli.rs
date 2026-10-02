@@ -11,7 +11,7 @@ use crate::{dump, table};
 #[command(
     name = "dfitsort",
     version,
-    about = "Fast FITS header listing and keyword tables (successor of ESO dfits/fitsort)",
+    about = "Fast FITS header listing and keyword tables (after ESO dfits/fitsort)",
     after_help = "Invoked as `dfits` or `fitsort` (for example through a symlink), or as\n`dfitsort legacy dfits|fitsort ARGS...`, it behaves exactly like the original ESO tools."
 )]
 struct Cli {

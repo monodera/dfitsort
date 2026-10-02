@@ -1,6 +1,6 @@
 [package]
 name = "dfitsort"
-description = "Fast FITS header listing and keyword tables; successor of ESO dfits/fitsort"
+description = "Fast FITS header listing and keyword tables, after ESO dfits/fitsort"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
