@@ -132,6 +132,10 @@ cargo test --workspace
 uv run --no-project --with astropy --with numpy tests/oracle/check_astropy.py target/debug/dfitsort
 scripts/make_golden.sh /path/to/eso/dfits-and-fitsort-sources   # refresh legacy golden files
 scripts/bench.sh /some/scratch/dir [/path/to/eso/c/sources]       # benchmarks
+
+# the same checks on your own files
+uv run --no-project --with astropy --with numpy tests/oracle/check_files.py target/debug/dfitsort data/*.fits
+scripts/compare_legacy.sh target/debug/dfitsort /path/to/eso/c/sources data/*.fits -- OBJECT EXPTIME
 ```
 
 Test fixtures are regenerated with `tests/fixtures/gen.py` (astropy) and
