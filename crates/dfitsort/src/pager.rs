@@ -157,7 +157,7 @@ pub fn legacy_p(args: &[OsString], lead: impl Fn(&[OsString]) -> usize) -> (bool
     let mut args = args.to_vec();
     let mut page = false;
     let mut take = |args: &mut Vec<OsString>, i: usize| {
-        if i >= 1 && args.get(i).is_some_and(|a| a == "-p") {
+        if args.get(i).is_some_and(|a| a == "-p") {
             args.remove(i);
             page = true;
         }
@@ -168,7 +168,10 @@ pub fn legacy_p(args: &[OsString], lead: impl Fn(&[OsString]) -> usize) -> (bool
     if lead > 0 {
         take(&mut args, 1 + lead);
     }
+    // The last argument counts only past the leading options: `dfits -x -p` reads -p as N.
     let last = args.len().saturating_sub(1);
-    take(&mut args, last);
+    if last > lead {
+        take(&mut args, last);
+    }
     (page, args)
 }

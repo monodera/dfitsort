@@ -231,3 +231,16 @@ fn legacy_p_elsewhere_keeps_its_c_meaning() {
         assert!(stdout(&out).lines().next().unwrap().contains("-P"), "{keys}: {}", stdout(&out));
     }
 }
+
+#[test]
+fn legacy_p_as_the_x_operand_does_not_page() {
+    // `dfits -x -p`: -p is the extension number even though it is also the last argument.
+    let legacy = legacy_bin();
+    let dfits = quote(&legacy.path().join("dfits"));
+    let dir = tempfile::tempdir().unwrap();
+    let ran = dir.path().join("ran");
+    let (code, screen) = on_terminal(&format!("{dfits} -x -p"), &format!("echo > {}; cat", quote(&ran)));
+    assert_eq!(code, Some(0));
+    assert_eq!(screen, "");
+    assert!(!ran.exists());
+}
