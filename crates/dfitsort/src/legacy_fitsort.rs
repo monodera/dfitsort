@@ -8,10 +8,10 @@ use dfitsort_core::legacy::{fitsort_key, fitsort_read, fitsort_write};
 use crate::pager;
 use crate::paths::os_bytes;
 
-/// `args` includes argv[0]; a first argument `-p` (not in fitsort.c) pages the output.
+/// `args` includes argv[0]; `-p` (not in fitsort.c) first, after `-d` or last pages the output.
 /// Returns 0, or 255 when the input held no dfits output.
 pub fn main(args: &[OsString]) -> i32 {
-    let (page, args) = pager::leading_p(args);
+    let (page, args) = pager::legacy_p(args, |a| usize::from(a.get(1).is_some_and(|x| x == "-d")));
     let (mut out, pager) = pager::start(page);
     let mut code = 0;
     let result = fitsort(&args, &mut out, &mut code).and_then(|()| out.flush());

@@ -150,11 +150,28 @@ impl Pager {
     }
 }
 
-/// Legacy tools: a first argument `-p` asks for the pager; returns that and the
-/// arguments without it (argv[0] kept).
-pub fn leading_p(args: &[OsString]) -> (bool, Vec<OsString>) {
-    match args.get(1) {
-        Some(a) if a == OsStr::new("-p") => (true, args[..1].iter().chain(&args[2..]).cloned().collect()),
-        _ => (false, args.to_vec()),
+/// Legacy tools: `-p` asks for the pager as the first argument, right after the tool's
+/// leading options (`lead` counts them in the arguments it is given) or as the last
+/// argument; returns that and the arguments without it (argv[0] kept).
+pub fn legacy_p(args: &[OsString], lead: impl Fn(&[OsString]) -> usize) -> (bool, Vec<OsString>) {
+    let mut args = args.to_vec();
+    let mut page = false;
+    let mut take = |args: &mut Vec<OsString>, i: usize| {
+        if args.get(i).is_some_and(|a| a == "-p") {
+            args.remove(i);
+            page = true;
+        }
+    };
+    take(&mut args, 1);
+    // Without leading options, this place is the first argument, which is taken already.
+    let lead = lead(&args);
+    if lead > 0 {
+        take(&mut args, 1 + lead);
     }
+    // The last argument counts only past the leading options: `dfits -x -p` reads -p as N.
+    let last = args.len().saturating_sub(1);
+    if last > lead {
+        take(&mut args, last);
+    }
+    (page, args)
 }
