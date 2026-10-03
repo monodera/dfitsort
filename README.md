@@ -134,7 +134,7 @@ Byte identity holds for standard-conforming files. Known differences:
 - A header cut before `END`: the cards read so far are printed, a message goes to stderr and the exit status is 1 (C prints the same cards; it exits 1 for a cut primary but 0 for a cut extension).
 - Bytes after the last HDU are ignored (C `dfits -x 0` on such a file exits 1, dfitsort 0).
 - An unusable data size stops `-x 0` with an error, for any HDU (C scans on).
-- `-p` as the first argument (`dfits -p ...`, `fitsort -p [-d] ...`) pages the output as `--pager` does; C dfits takes it as a file name and C fitsort as the keyword `-P`. Anywhere else, `-p` keeps its C meaning.
+- `-p` as the first argument, right after `-x N` (dfits) or `-d` (fitsort), or as the last argument (`dfits -p ...`, `dfits -x 0 -p ...`, `dfits FILES... -p`, `fitsort [-d] KEYS... -p`) pages the output as `--pager` does; C dfits takes it as a file name and C fitsort as the keyword `-P`. Anywhere else, `-p` keeps its C meaning.
 
 ### Exit status
 

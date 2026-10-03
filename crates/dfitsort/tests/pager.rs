@@ -158,40 +158,71 @@ fn the_pager_keeps_its_own_interrupt_handling() {
 }
 
 #[test]
-fn legacy_tools_page_with_a_leading_p() {
+fn legacy_tools_page_with_p_first_after_their_options_or_last() {
     let legacy = legacy_bin();
     let dfits = quote(&legacy.path().join("dfits"));
     let fitsort = quote(&legacy.path().join("fitsort"));
     let plain = |cmd: &str| -> Vec<u8> {
         Command::new("sh").args(["-c", cmd]).current_dir(fixtures()).output().unwrap().stdout
     };
+    let dfits_unpaged = format!("{dfits} -x 0 mef.fits eso1.fits");
+    let fitsort_unpaged = format!("{dfits} eso1.fits eso2.fits | {fitsort} -d OBJECT");
     for (paging, unpaged) in [
-        (format!("{dfits} -p -x 0 mef.fits"), format!("{dfits} -x 0 mef.fits")),
-        (
-            format!("{dfits} eso1.fits eso2.fits | {fitsort} -p -d OBJECT"),
-            format!("{dfits} eso1.fits eso2.fits | {fitsort} -d OBJECT"),
-        ),
+        (format!("{dfits} -p -x 0 mef.fits eso1.fits"), &dfits_unpaged),
+        (format!("{dfits} -x 0 -p mef.fits eso1.fits"), &dfits_unpaged),
+        (format!("{dfits} -x 0 mef.fits eso1.fits -p"), &dfits_unpaged),
+        (format!("{dfits} -x 0 - -p < mef.fits"), &format!("{dfits} -x 0 - < mef.fits")),
+        (format!("{dfits} eso1.fits eso2.fits | {fitsort} -p -d OBJECT"), &fitsort_unpaged),
+        (format!("{dfits} eso1.fits eso2.fits | {fitsort} -d -p OBJECT"), &fitsort_unpaged),
+        (format!("{dfits} eso1.fits eso2.fits | {fitsort} -d OBJECT -p"), &fitsort_unpaged),
     ] {
         let dir = tempfile::tempdir().unwrap();
         let (code, screen) = on_terminal(&paging, &saving_pager(dir.path()));
         assert_eq!(code, Some(0), "{paging}");
         assert_eq!(screen, "", "{paging}");
-        assert_eq!(paged(dir.path()).into_bytes(), plain(&unpaged), "{paging}");
+        assert_eq!(paged(dir.path()).into_bytes(), plain(unpaged), "{paging}");
     }
 }
 
 #[test]
-fn legacy_p_counts_only_as_the_first_argument() {
+fn legacy_p_elsewhere_keeps_its_c_meaning() {
     let legacy = legacy_bin();
     let out = Command::new(legacy.path().join("dfits"))
-        .args(["-x", "0", "-p", "eso1.fits"])
+        .args(["eso1.fits", "-p", "eso2.fits"])
         .current_dir(fixtures())
         .output()
         .unwrap();
     assert_eq!(out.status.code(), Some(1));
     assert!(stderr(&out).contains("cannot open file [-p]"));
-    let out =
-        Command::new(legacy.path().join("dfits")).args(["-p", "eso1.fits"]).current_dir(fixtures()).output().unwrap();
+    assert!(stdout(&out).contains("====> file eso2.fits (main) <===="));
+    // `-x -p`: -p is the extension number (atoi gives 0), as in dfits.c.
+    let out = Command::new(legacy.path().join("dfits"))
+        .args(["-x", "-p", "mef.fits"])
+        .current_dir(fixtures())
+        .output()
+        .unwrap();
     assert_eq!(out.status.code(), Some(0));
-    assert!(stdout(&out).starts_with("====> file eso1.fits (main) <===="));
+    assert_eq!(
+        out.stdout,
+        Command::new(legacy.path().join("dfits"))
+            .args(["-x", "0", "mef.fits"])
+            .current_dir(fixtures())
+            .output()
+            .unwrap()
+            .stdout
+    );
+    // fitsort: -p between keywords is the keyword -P.
+    let out = Command::new("sh")
+        .args([
+            "-c",
+            &format!(
+                "{} eso1.fits | {} OBJECT -p EXPTIME",
+                quote(&legacy.path().join("dfits")),
+                quote(&legacy.path().join("fitsort"))
+            ),
+        ])
+        .current_dir(fixtures())
+        .output()
+        .unwrap();
+    assert!(stdout(&out).lines().next().unwrap().contains("-P"), "{}", stdout(&out));
 }
