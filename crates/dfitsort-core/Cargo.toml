@@ -10,6 +10,10 @@ homepage.workspace = true
 keywords = ["fits", "astronomy", "header"]
 categories = ["science", "parser-implementations"]
 
+[package.metadata.release]
+# The workspace is tagged once, from the dfitsort crate (see release.toml).
+tag = false
+
 [dependencies]
 flate2 = "1"
 thiserror = "2"
