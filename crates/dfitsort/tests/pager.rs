@@ -211,18 +211,23 @@ fn legacy_p_elsewhere_keeps_its_c_meaning() {
             .unwrap()
             .stdout
     );
-    // fitsort: -p between keywords is the keyword -P.
-    let out = Command::new("sh")
-        .args([
-            "-c",
-            &format!(
-                "{} eso1.fits | {} OBJECT -p EXPTIME",
-                quote(&legacy.path().join("dfits")),
-                quote(&legacy.path().join("fitsort"))
-            ),
-        ])
+    // A second -p after a leading one, with no -x or -d in between, is a file name.
+    let out = Command::new(legacy.path().join("dfits"))
+        .args(["-p", "-p", "eso1.fits"])
         .current_dir(fixtures())
         .output()
         .unwrap();
-    assert!(stdout(&out).lines().next().unwrap().contains("-P"), "{}", stdout(&out));
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("cannot open file [-p]"));
+    // fitsort: -p between keywords, or a second one after a leading -p, is the keyword -P.
+    let dfits = quote(&legacy.path().join("dfits"));
+    let fitsort = quote(&legacy.path().join("fitsort"));
+    for keys in ["OBJECT -p EXPTIME", "-p -p OBJECT"] {
+        let out = Command::new("sh")
+            .args(["-c", &format!("{dfits} eso1.fits | {fitsort} {keys}")])
+            .current_dir(fixtures())
+            .output()
+            .unwrap();
+        assert!(stdout(&out).lines().next().unwrap().contains("-P"), "{keys}: {}", stdout(&out));
+    }
 }

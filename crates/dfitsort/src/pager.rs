@@ -163,8 +163,11 @@ pub fn legacy_p(args: &[OsString], lead: impl Fn(&[OsString]) -> usize) -> (bool
         }
     };
     take(&mut args, 1);
-    let after_options = 1 + lead(&args);
-    take(&mut args, after_options);
+    // Without leading options, this place is the first argument, which is taken already.
+    let lead = lead(&args);
+    if lead > 0 {
+        take(&mut args, 1 + lead);
+    }
     let last = args.len().saturating_sub(1);
     take(&mut args, last);
     (page, args)
