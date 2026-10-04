@@ -62,7 +62,7 @@ The binaries are not signed. On macOS, if a browser download is blocked, run
 Or build from source with Cargo (Rust 1.85 or later):
 
 ```sh
-cargo install --locked --git https://github.com/monodera/dfitsort --tag v0.2.0 dfitsort
+cargo install --locked --git https://github.com/monodera/dfitsort --tag v0.2.1 dfitsort
 ```
 
 There is no crates.io package yet; I plan to publish it there later. `cargo
