@@ -152,7 +152,7 @@ checksum = "a31eee39dddec8330830986fcd7625edb5a24ec90ea038215273bbc3adb08ac6"
 
 [[package]]
 name = "dfitsort"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "clap",
  "dfitsort-core",
@@ -164,7 +164,7 @@ dependencies = [
 
 [[package]]
 name = "dfitsort-core"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "flate2",
  "tempfile",

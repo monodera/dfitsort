@@ -64,7 +64,7 @@ release tag on GitHub:
 
 ```sh
 cargo install --locked dfitsort
-cargo install --locked --git https://github.com/monodera/dfitsort --tag v0.2.1 dfitsort
+cargo install --locked --git https://github.com/monodera/dfitsort --tag v0.2.2 dfitsort
 ```
 
 With [cargo-binstall](https://github.com/cargo-bins/cargo-binstall),
