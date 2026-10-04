@@ -1,8 +1,9 @@
 # cargo-release configuration (https://github.com/crate-ci/cargo-release).
 #
 #   cargo release minor            # dry run: show what would change
-#   cargo release minor --execute  # bump, commit, tag vX.Y.Z, push
+#   cargo release minor --execute  # bump, commit, publish to crates.io, tag vX.Y.Z, push
 #
+# Publishing needs a crates.io token (`cargo login`); dfitsort-core goes first.
 # Pushing the tag triggers .github/workflows/release.yml.
 
 # Both crates share [workspace.package] version; bump them together in one commit.
@@ -13,8 +14,5 @@ pre-release-commit-message = "Release v{{version}}"
 # One tag for the workspace (v0.2.0), not one per crate (dfitsort-v0.2.0).
 tag-name = "v{{version}}"
 tag-message = "Release v{{version}}"
-
-# Not on crates.io yet; turn on once the crates are published there.
-publish = false
 
 allow-branch = ["main"]

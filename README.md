@@ -59,14 +59,19 @@ for zsh, `~/.bashrc` for bash) and open a new terminal.
 The binaries are not signed. On macOS, if a browser download is blocked, run
 `xattr -d com.apple.quarantine ~/.local/bin/dfitsort`.
 
-Or build from source with Cargo (Rust 1.85 or later):
+Or build from source with Cargo (Rust 1.85 or later), from crates.io or from a
+release tag on GitHub:
 
 ```sh
+cargo install --locked dfitsort
 cargo install --locked --git https://github.com/monodera/dfitsort --tag v0.2.1 dfitsort
 ```
 
-There is no crates.io package yet; I plan to publish it there later. `cargo
-install` installs `dfitsort` only; to get the legacy commands, create the
+With [cargo-binstall](https://github.com/cargo-bins/cargo-binstall),
+`cargo binstall dfitsort` fetches the prebuilt binary from the releases page
+instead of compiling.
+
+Cargo installs `dfitsort` only; to get the legacy commands, create the
 symlinks yourself in a directory on your `PATH` (see above for `~/.local/bin`):
 
 ```sh
