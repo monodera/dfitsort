@@ -25,6 +25,12 @@ libc = "0.2"
 [dev-dependencies]
 tempfile = "3"
 
+# cargo binstall: fetch the archive release.yml attaches to the GitHub release.
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }-{ version }-{ target }{ archive-suffix }"
+bin-dir = "{ name }-{ version }-{ target }/{ bin }{ binary-ext }"
+pkg-fmt = "tgz"
+
 [package.metadata.release]
 # Keep the README's `cargo install --tag` on the release being made.
 pre-release-replacements = [

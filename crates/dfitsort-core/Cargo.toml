@@ -9,6 +9,9 @@ repository.workspace = true
 homepage.workspace = true
 keywords = ["fits", "astronomy", "header"]
 categories = ["science", "parser-implementations"]
+readme = "README.md"
+# The integration tests read ../../tests/fixtures, which the crate tarball does not contain.
+exclude = ["tests/"]
 
 [package.metadata.release]
 # The workspace is tagged once, from the dfitsort crate (see release.toml).
