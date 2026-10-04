@@ -12,9 +12,14 @@ use crate::pager::{self, Pager};
 use crate::paths::os_bytes;
 use crate::run::{self, TEXT_CAPACITY};
 
-/// `args` includes argv[0]; `-p` (not in dfits.c) first, after `-x N` or last pages the output.
+/// `args` includes argv[0]; `-p` (not in dfits.c) first, after `-x N` or last pages the output,
+/// and `-h` or `--help` (not in dfits.c either) as the only argument prints the usage.
 /// Returns the exit status: the number of failed files.
 pub fn main(args: &[OsString]) -> i32 {
+    if matches!(args, [_, flag] if flag == "-h" || flag == "--help") {
+        let pname = os_bytes(&args[0]).into_owned();
+        return i32::from(usage(&mut io::stdout().lock(), &pname, PAGER_USAGE).is_err());
+    }
     let (page, args) = pager::legacy_p(args, |a| if a.get(1).is_some_and(|x| x == "-x") { 2 } else { 0 });
     let (mut out, mut pager) = pager::start(page);
     let mut code = 0;
@@ -26,7 +31,7 @@ fn dfits(args: &[OsString], out: &mut impl Write, pager: &mut Pager, code: &mut 
     let pname = args.first().map_or_else(|| b"dfits".to_vec(), |a| os_bytes(a).into_owned());
     if args.len() < 2 {
         *code = 1;
-        return usage(out, &pname);
+        return usage(out, &pname, "");
     }
     // As in dfits.c: `-x N` must be the first two arguments, `-` the last one.
     let (xtnum, first) = if args[1] == "-x" { (atoi(args.get(2)), 3) } else { (-1, 1) };
@@ -64,15 +69,20 @@ fn dfits(args: &[OsString], out: &mut impl Write, pager: &mut Pager, code: &mut 
     )
 }
 
-fn usage(out: &mut impl Write, pname: &[u8]) -> io::Result<()> {
+const PAGER_USAGE: &str = "-p       pages the output through $PAGER (first, after -x N, or last)\n";
+
+/// dfits.c's usage text, with `extra` lines after its option list.
+fn usage(out: &mut impl Write, pname: &[u8], extra: &str) -> io::Result<()> {
     out.write_all(b"\n\nusage: ")?;
     out.write_all(pname)?;
     out.write_all(b" [-x xtnum] <list of FITS files>\nusage: ")?;
     out.write_all(pname)?;
     out.write_all(
         b" [-x xtnum] -\n\nThe former version expects file names.\nThe latter expects data coming in from stdin.\n\n\
--x xtnum specifies the extension header to print\n-x 0     specifies main header + all extensions\n\n\n",
-    )
+-x xtnum specifies the extension header to print\n-x 0     specifies main header + all extensions\n",
+    )?;
+    out.write_all(extra.as_bytes())?;
+    out.write_all(b"\n\n")
 }
 
 /// C `atoi`: optional blanks and sign, then digits; anything else gives 0.

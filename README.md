@@ -135,6 +135,7 @@ Byte identity holds for standard-conforming files. Known differences:
 - Bytes after the last HDU are ignored (C `dfits -x 0` on such a file exits 1, dfitsort 0).
 - An unusable data size stops `-x 0` with an error, for any HDU (C scans on).
 - `-p` as the first argument, right after `-x N` (dfits) or `-d` (fitsort), or as the last argument (`dfits -p ...`, `dfits -x 0 -p ...`, `dfits FILES... -p`, `fitsort [-d] KEYS... -p`) pages the output as `--pager` does; C dfits takes it as a file name and C fitsort as the keyword `-P`. Anywhere else, `-p` keeps its C meaning.
+- `-h` or `--help` as the only argument prints the usage text with the added options listed, and exits 0 (with no arguments, the C usage text and exit status are kept). C dfits takes it as a file name and C fitsort as the keyword `-H`; with other arguments, it keeps that meaning.
 
 ### Exit status
 
