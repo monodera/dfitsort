@@ -32,9 +32,10 @@ const LEGACY: &str = "Invoked as `dfits` or `fitsort` (for example through a sym
   Invoked as `dfits` or `fitsort` (for example through a symlink), or as
   `dfitsort legacy dfits|fitsort ARGS...`, it behaves exactly like the original
   ESO tools: same arguments, output, messages and exit status (dfits: the number
-  of failed files; fitsort: 255 when there is no record). One addition: `-p` as
+  of failed files; fitsort: 255 when there is no record). Two additions: `-p` as
   the first argument, right after `-x N` (dfits) or `-d` (fitsort), or as the last
-  argument pages the output as --pager does.
+  argument pages the output as --pager does, and `-h` or `--help` as the only
+  argument prints the usage.
 
 ",
         exit_status!(),

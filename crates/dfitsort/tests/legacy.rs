@@ -3,7 +3,7 @@
 
 mod common;
 
-use common::{dfitsort, fixtures, legacy_bin, stdout};
+use common::{dfitsort, fixtures, legacy_bin, run, stdout};
 use std::fs::File;
 use std::process::{Command, Output};
 
@@ -114,4 +114,33 @@ fn fitsort_has_no_fixed_line_or_name_limits() {
         .unwrap();
     let text = stdout(&out);
     assert!(text.lines().nth(1).unwrap().starts_with(&format!("{}\t", long.display())), "{text}");
+}
+
+#[test]
+fn legacy_help_alone_prints_the_usage_and_exits_0() {
+    let bin = legacy_bin();
+    for (tool, usage) in [("dfits", "dfits [-x xtnum] <list of FITS files>"), ("fitsort", "fitsort [-d] KEY1")] {
+        let bare = legacy(&bin, tool, &[]);
+        assert_eq!(bare.status.code(), Some(if tool == "dfits" { 1 } else { 0 }), "{tool}");
+        assert!(!stdout(&bare).contains("-p "), "{tool}: the C usage text stays as it is");
+        for flag in ["-h", "--help"] {
+            let out = legacy(&bin, tool, &[flag]);
+            assert_eq!(out.status.code(), Some(0), "{tool} {flag}");
+            let text = stdout(&out);
+            assert!(text.contains(usage), "{tool} {flag}: {text}");
+            assert!(text.contains("-p "), "{tool} {flag}: {text}");
+            assert!(out.stderr.is_empty(), "{tool} {flag}");
+        }
+    }
+    let sub = run(&["legacy", "dfits", "-h"]);
+    assert_eq!(sub.status.code(), Some(0));
+    assert!(stdout(&sub).contains("usage: dfits [-x xtnum]"));
+}
+
+#[test]
+fn legacy_help_among_other_arguments_keeps_its_c_meaning() {
+    let bin = legacy_bin();
+    let out = legacy(&bin, "dfits", &["-h", "eso1.fits"]);
+    assert_eq!(out.status.code(), Some(1));
+    assert!(String::from_utf8_lossy(&out.stderr).contains("cannot open file [-h]"));
 }
