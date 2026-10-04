@@ -24,3 +24,9 @@ libc = "0.2"
 
 [dev-dependencies]
 tempfile = "3"
+
+[package.metadata.release]
+# Keep the README's `cargo install --tag` on the release being made.
+pre-release-replacements = [
+  { file = "../../README.md", search = '--tag v[0-9]+\.[0-9]+\.[0-9]+', replace = "--tag v{{version}}", exactly = 1 },
+]
