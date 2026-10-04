@@ -7,6 +7,9 @@ updates:
     groups:
       actions:
         patterns: ["*"]
+    # Its refs pick a toolchain (stable, the MSRV, master), not an action version.
+    ignore:
+      - dependency-name: dtolnay/rust-toolchain
   - package-ecosystem: cargo
     directory: /
     schedule:
