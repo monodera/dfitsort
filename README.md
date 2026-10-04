@@ -47,7 +47,8 @@ into a directory on your `PATH`:
 
 ```sh
 tar xzf dfitsort-VERSION-TARGET.tar.gz
-cp -P dfitsort-VERSION-TARGET/{dfitsort,dfits,fitsort} ~/.local/bin/
+mkdir -p ~/.local/bin
+cd dfitsort-VERSION-TARGET && cp -P dfitsort dfits fitsort ~/.local/bin/
 ```
 
 The binaries are not signed. On macOS, if a browser download is blocked, run
@@ -64,6 +65,7 @@ install` installs `dfitsort` only; to get the legacy commands, create the
 symlinks yourself:
 
 ```sh
+mkdir -p ~/.local/bin
 ln -s "$(which dfitsort)" ~/.local/bin/dfits
 ln -s "$(which dfitsort)" ~/.local/bin/fitsort
 ```
