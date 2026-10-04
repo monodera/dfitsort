@@ -39,13 +39,29 @@ requests, but I may be slow to reply and cannot promise fixes or new features.
 
 ## Install
 
+Prebuilt binaries for Linux (x86_64 and aarch64, statically linked) and macOS
+(Apple silicon and Intel) are on the
+[releases page](https://github.com/monodera/dfitsort/releases/latest). Each
+archive holds `dfitsort` and the `dfits` and `fitsort` symlinks; copy all three
+into a directory on your `PATH`:
+
 ```sh
-cargo install --git https://github.com/monodera/dfitsort dfitsort
+tar xzf dfitsort-VERSION-TARGET.tar.gz
+cp -P dfitsort-VERSION-TARGET/{dfitsort,dfits,fitsort} ~/.local/bin/
 ```
 
-There is no crates.io package or prebuilt binary yet; I plan to publish it on
-crates.io later. To get the legacy commands,
-create the symlinks yourself:
+The binaries are not signed. On macOS, if a browser download is blocked, run
+`xattr -d com.apple.quarantine ~/.local/bin/dfitsort`.
+
+Or build from source with Cargo (Rust 1.85 or later):
+
+```sh
+cargo install --locked --git https://github.com/monodera/dfitsort --tag v0.2.0 dfitsort
+```
+
+There is no crates.io package yet; I plan to publish it there later. `cargo
+install` installs `dfitsort` only; to get the legacy commands, create the
+symlinks yourself:
 
 ```sh
 ln -s "$(which dfitsort)" ~/.local/bin/dfits
