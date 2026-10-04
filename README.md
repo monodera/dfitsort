@@ -43,13 +43,18 @@ Prebuilt binaries for Linux (x86_64 and aarch64, statically linked) and macOS
 (Apple silicon and Intel) are on the
 [releases page](https://github.com/monodera/dfitsort/releases/latest). Each
 archive holds `dfitsort` and the `dfits` and `fitsort` symlinks; copy all three
-into a directory on your `PATH`:
+into a directory on your `PATH`, for example `~/.local/bin`:
 
 ```sh
 tar xzf dfitsort-VERSION-TARGET.tar.gz
 mkdir -p ~/.local/bin
 cd dfitsort-VERSION-TARGET && cp -P dfitsort dfits fitsort ~/.local/bin/
 ```
+
+`~/.local/bin` is not on `PATH` by default on macOS and some Linux setups. If
+`dfitsort --version` says the command is not found, add the line
+`export PATH="$HOME/.local/bin:$PATH"` to your shell's startup file (`~/.zshrc`
+for zsh, `~/.bashrc` for bash) and open a new terminal.
 
 The binaries are not signed. On macOS, if a browser download is blocked, run
 `xattr -d com.apple.quarantine ~/.local/bin/dfitsort`.
@@ -62,7 +67,7 @@ cargo install --locked --git https://github.com/monodera/dfitsort --tag v0.2.0 d
 
 There is no crates.io package yet; I plan to publish it there later. `cargo
 install` installs `dfitsort` only; to get the legacy commands, create the
-symlinks yourself:
+symlinks yourself in a directory on your `PATH` (see above for `~/.local/bin`):
 
 ```sh
 mkdir -p ~/.local/bin
