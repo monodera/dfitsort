@@ -24,7 +24,7 @@ jobs:
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
       # setup-uv has no floating major tag since v8.
-      - uses: astral-sh/setup-uv@v10.2.0
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
           cache-dependency-glob: tests/oracle/check_astropy.py
       - run: cargo build -p dfitsort --locked
